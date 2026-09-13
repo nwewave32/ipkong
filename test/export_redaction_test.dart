@@ -73,4 +73,23 @@ void main() {
       );
     });
   });
+
+  group('내보내기 식물 검열', () {
+    test('photo_path 가 제거된다', () {
+      // 사진 파일은 내보내기에 실리지 않는다. 파일 이름만 남기면 받는 쪽에서는
+      // 있지도 않은 파일을 가리키는 쓸모없는 값이 된다.
+      final rows = PlantRepository.redactPlants([
+        {
+          'id': 'p1',
+          'name': '몬스테라',
+          'photo_path': '3f1c0e5a-2b77-4f10-9a0f-0c9d1e2f3a4b.jpg',
+          'anchor_days': 10.0,
+        },
+      ]);
+
+      expect(rows.single.containsKey('photo_path'), isFalse);
+      expect(rows.single['name'], '몬스테라');
+      expect(rows.single['anchor_days'], 10.0);
+    });
+  });
 }

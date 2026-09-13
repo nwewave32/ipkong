@@ -10,6 +10,17 @@ import 'notification_backend.dart';
 ///
 /// 백그라운드에서 DB 를 직접 건드리는 대신 SharedPreferences 에만 적어두고,
 /// 앱이 다음에 열릴 때 [drain] 이 비우면서 반영한다.
+///
+/// ⚠️ **여기는 isolate 두 개가 같은 저장소를 본다.** `SharedPreferences` 는
+/// isolate 마다 메모리 캐시를 들고 있고, `getInstance()` 는 그 캐시를 돌려준다.
+/// 앱의 인스턴스는 `main()` 에서 한 번 만들어진 뒤 그대로이므로, 백그라운드
+/// isolate 가 적은 값을 **그냥 읽으면 보이지 않는다.** 그래서 읽기 전에 반드시
+/// [SharedPreferences.reload] 로 네이티브 저장소를 다시 읽어야 한다.
+///
+/// 이걸 빠뜨리면 증상이 고약하다. 잠금화면에서 "축축했어요" 를 누르고 앱을
+/// 열면 그 식물이 여전히 미응답으로 보여 한 번 더 답하게 되고, 다음 콜드
+/// 스타트에서 묵혀둔 큐가 그제서야 반영되면서 **같은 응답이 두 번 적용된다.**
+/// 학습 factor 와 축축 연속 카운트가 조용히 틀어진다.
 class PendingActions {
   const PendingActions._();
 
@@ -17,6 +28,9 @@ class PendingActions {
 
   static Future<void> enqueue(String actionId, String payload) async {
     final prefs = await SharedPreferences.getInstance();
+    // 읽고-고쳐-쓰기 전에 최신 상태를 가져온다. 이 isolate 가 재사용되는 동안
+    // 앱 쪽에서 큐를 비웠을 수 있고, 낡은 캐시로 덮어쓰면 그 삭제가 되살아난다.
+    await prefs.reload();
     final queue = prefs.getStringList(_key) ?? <String>[];
     queue.add(
       jsonEncode({
@@ -30,6 +44,9 @@ class PendingActions {
 
   static Future<List<PendingAction>> drain() async {
     final prefs = await SharedPreferences.getInstance();
+    // 백그라운드 isolate 가 적어둔 값은 이 한 줄이 없으면 보이지 않는다.
+    // 클래스 주석 참고 — 빠뜨리면 응답이 중복 적용된다.
+    await prefs.reload();
     final raw = prefs.getStringList(_key) ?? <String>[];
     if (raw.isEmpty) return const [];
     await prefs.remove(_key);

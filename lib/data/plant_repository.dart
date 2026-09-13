@@ -131,17 +131,33 @@ class PlantRepository {
   /// 사용자에게는 어차피 의미 없는 값이므로 빼도 백업의 가치는 그대로다.
   static const redactedEventColumns = {'device_id'};
 
+  /// 식물 행에서 내보내기에 실으면 안 되는 컬럼.
+  ///
+  /// `photo_path` 는 이 기기의 사진 파일 이름이다. 사진 자체는 내보내지
+  /// 않으므로 받는 쪽에는 아무 데도 닿지 않는 문자열이고, 남의 기기에서
+  /// 복원하면 있지도 않은 파일을 가리킨다. 쓸모가 없으면 빼는 게 맞다.
+  static const redactedPlantColumns = {'photo_path'};
+
   /// 이벤트 행에서 [redactedEventColumns] 를 걷어낸다.
   ///
   /// DB 없이 검증할 수 있도록 순수 함수로 분리해 뒀다.
   static List<Map<String, Object?>> redactEvents(
     List<Map<String, Object?>> rows,
   ) =>
+      _redact(rows, redactedEventColumns);
+
+  /// 식물 행에서 [redactedPlantColumns] 를 걷어낸다.
+  static List<Map<String, Object?>> redactPlants(
+    List<Map<String, Object?>> rows,
+  ) =>
+      _redact(rows, redactedPlantColumns);
+
+  static List<Map<String, Object?>> _redact(
+    List<Map<String, Object?>> rows,
+    Set<String> columns,
+  ) =>
       rows
-          .map(
-            (r) => {...r}
-              ..removeWhere((k, _) => redactedEventColumns.contains(k)),
-          )
+          .map((r) => {...r}..removeWhere((k, _) => columns.contains(k)))
           .toList();
 
   /// 데이터 내보내기. 서버가 없으므로 사용자 보호 장치로 반드시 제공한다.
@@ -152,7 +168,7 @@ class PlantRepository {
     return {
       'version': 1,
       'exported_at': DateTime.now().toIso8601String(),
-      'plants': plants,
+      'plants': redactPlants(plants),
       'watering_events': redactEvents(events),
     };
   }

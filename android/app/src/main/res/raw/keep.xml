@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  R8 이 릴리스 빌드에서 "쓰이지 않는" 리소스를 지운다. 알림 아이콘은 Dart
+  문자열로만 참조하므로 R8 눈에는 미사용으로 보이고, 지워지면 알림이 조용히
+  실패한다 (뜨지 않거나 아이콘이 깨진다). 그래서 명시적으로 지킨다.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_notification" />

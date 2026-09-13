@@ -167,6 +167,20 @@ class AppStrings {
     '하루에 한 번만 알립니다. 확인할 식물이 여러 개면 하나로 묶어서 보내요.',
     'One notification a day. Several plants are grouped into one.',
   );
+  String get notifyTimeChange => _t('알림 시간 바꾸기', 'Change notification time');
+  String get photoSaveFailed => _t(
+    '사진을 저장하지 못했어요. 나머지 정보는 저장됐습니다.',
+    "Couldn't save the photo. Everything else was saved.",
+  );
+  /// 시간 휠 각 칸의 스크린 리더 이름. 값만 읽히면 "9" 가 시인지 분인지 모른다.
+  String get wheelAmPm => _t('오전 오후', 'AM or PM');
+  String get wheelHour => _t('시', 'Hour');
+  String get wheelMinute => _t('분', 'Minute');
+  String get notifySheetNote => _t(
+    '하루에 한 번, 이 시각에 알립니다. 정시 알람이 아니라 십수 분 늦을 수 있습니다.',
+    'Once a day, around this time. It is not an exact alarm, so it can be '
+        'a few minutes late.',
+  );
 
   String get language => _t('언어', 'Language');
   String get languageSystem => _t('시스템 설정', 'System');

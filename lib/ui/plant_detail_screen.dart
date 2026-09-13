@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -30,6 +28,7 @@ class PlantDetailScreen extends ConsumerWidget {
 
     final climate = ref.watch(climateProvider);
     final winter = ref.watch(winterModeProvider);
+    final photo = ref.watch(photoStoreProvider).fileFor(plant.photoPath);
     final today = WateringSchedule.dateOnly(DateTime.now());
     final interval = WateringSchedule.nextInterval(
       plant,
@@ -68,14 +67,17 @@ class PlantDetailScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (plant.photoPath != null)
+          if (photo != null)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Image.file(
-                File(plant.photoPath!),
+                photo,
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                // 파일이 사라졌으면 자리를 비운다 — 상세 화면에는 이미 이름과
+                // 기록이 있어서 빈 액자를 보여줄 이유가 없다.
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
           const SizedBox(height: 16),

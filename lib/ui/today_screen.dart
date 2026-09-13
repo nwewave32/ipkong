@@ -98,7 +98,9 @@ class _TodayCard extends ConsumerWidget {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: _Avatar(path: plant.photoPath),
+              leading: _Avatar(
+                file: ref.watch(photoStoreProvider).fileFor(plant.photoPath),
+              ),
               title: Text(
                 plant.name,
                 style: const TextStyle(fontWeight: FontWeight.w600),
@@ -153,15 +155,20 @@ class _TodayCard extends ConsumerWidget {
 }
 
 class _Avatar extends StatelessWidget {
-  const _Avatar({this.path});
+  const _Avatar({this.file});
 
-  final String? path;
+  final File? file;
 
   @override
   Widget build(BuildContext context) {
-    if (path == null) {
-      return const CircleAvatar(radius: 24, child: Text('🪴'));
-    }
-    return CircleAvatar(radius: 24, backgroundImage: FileImage(File(path!)));
+    // foregroundImage 는 읽기에 실패하면 그리지 않고 child 를 그대로 보여준다.
+    // 파일이 사라졌거나 깨졌을 때(기기 복원, 외부 삭제) 자리표시자로 자연스럽게
+    // 떨어지므로, 그리기 전에 존재 여부를 확인할 필요가 없다.
+    return CircleAvatar(
+      radius: 24,
+      foregroundImage: file == null ? null : FileImage(file!),
+      onForegroundImageError: file == null ? null : (_, _) {},
+      child: const Text('🪴'),
+    );
   }
 }

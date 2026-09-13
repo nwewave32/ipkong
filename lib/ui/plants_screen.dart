@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,6 +14,7 @@ class PlantsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final s = AppStrings.of(context);
     final plants = ref.watch(plantListProvider);
+    final photos = ref.watch(photoStoreProvider);
     final climate = ref.watch(climateProvider);
     final winter = ref.watch(winterModeProvider);
     final today = WateringSchedule.dateOnly(DateTime.now());
@@ -75,6 +74,7 @@ class PlantsScreen extends ConsumerWidget {
                 winterModeEnabled: winter,
               );
               final dday = due.difference(today).inDays;
+              final photo = photos.fileFor(plant.photoPath);
 
               return InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -92,21 +92,16 @@ class PlantsScreen extends ConsumerWidget {
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(12),
                           ),
-                          child: plant.photoPath == null
-                              ? Container(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .secondaryContainer,
-                                  child: const Center(
-                                    child: Text(
-                                      '🪴',
-                                      style: TextStyle(fontSize: 40),
-                                    ),
-                                  ),
-                                )
+                          // 파일이 사라졌거나 깨졌으면 자리표시자로 떨어진다.
+                          // 그리기 전에 존재를 확인하지 않는 이유는
+                          // [PhotoStore.fileFor] 주석 참고.
+                          child: photo == null
+                              ? const _PhotoPlaceholder()
                               : Image.file(
-                                  File(plant.photoPath!),
+                                  photo,
                                   fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) =>
+                                      const _PhotoPlaceholder(),
                                 ),
                         ),
                       ),
@@ -147,6 +142,19 @@ class PlantsScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+/// 사진이 없거나 읽지 못했을 때의 자리.
+class _PhotoPlaceholder extends StatelessWidget {
+  const _PhotoPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.secondaryContainer,
+      child: const Center(child: Text('🪴', style: TextStyle(fontSize: 40))),
     );
   }
 }

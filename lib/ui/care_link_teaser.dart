@@ -30,7 +30,8 @@ class _CareLinkTeaserState extends ConsumerState<CareLinkTeaser> {
     final interested = settings.interestedInCareLink;
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      // 설정 행·섹션 라벨의 좌우 여백(16)과 같은 선에 카드 모서리를 맞춘다.
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       color: Theme.of(context).colorScheme.secondaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -54,12 +55,17 @@ class _CareLinkTeaserState extends ConsumerState<CareLinkTeaser> {
                 style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 12),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  s.careLinkNextUpdate,
-                  style: Theme.of(context).textTheme.labelSmall,
+                // 폰 폭(393pt)에서 버튼과 나란히 두면 1.5px 넘친다.
+                // 문구가 남은 폭 안에서 접히게 한다.
+                Expanded(
+                  child: Text(
+                    s.careLinkNextUpdate,
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 12),
                 if (interested)
                   Text(
                     s.careLinkNoted,

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'app.dart';
 import 'core/climate.dart';
 import 'core/local_timezone.dart';
+import 'data/photo_store.dart';
+import 'notifications/local_notification_backend.dart';
 import 'notifications/notification_backend.dart';
 import 'providers/providers.dart';
 
@@ -19,14 +21,21 @@ Future<void> main() async {
   final climate = ClimateResolver.resolve(tzName);
   debugPrint('[ipkong] timezone=$tzName climate=$climate');
 
-  // 실기기 알림을 붙일 때 이 한 줄을 LocalNotificationBackend() 로 바꾼다.
-  final NotificationBackend backend = DebugNotificationBackend();
+  // 타임존 이름을 알림 백엔드에도 넘긴다. 예약 시각을 기기 타임존으로
+  // 해석해야 하는데, 플랫폼 호출을 두 번 할 이유가 없다.
+  final NotificationBackend backend =
+      LocalNotificationBackend(timeZoneName: tzName);
+
+  // 사진은 앱 문서 폴더에 둔다. 폴더를 여는 건 비동기라 프로바이더 기본값으로
+  // 만들 수 없어서, 여기서 한 번 열고 주입한다.
+  final photoStore = await PhotoStore.open();
 
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWithValue(prefs),
       climateProvider.overrideWithValue(climate),
       notificationBackendProvider.overrideWithValue(backend),
+      photoStoreProvider.overrideWithValue(photoStore),
     ],
   );
 

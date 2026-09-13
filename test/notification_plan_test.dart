@@ -1,7 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ipkong/domain/models/enums.dart';
 import 'package:ipkong/domain/models/plant.dart';
+import 'package:ipkong/notifications/notification_backend.dart';
 import 'package:ipkong/notifications/notification_plan.dart';
+import 'package:ipkong/notifications/pending_actions.dart';
 
 final d0 = DateTime(2026, 6, 1); // 북반구 여름 — 계절 배율 없음
 
@@ -155,5 +159,120 @@ void main() {
 
     // 같은 입력이면 같은 ID
     expect(plan(plants).map((n) => n.id).toList(), ids);
+  });
+
+  group('payload — 백그라운드 액션이 되읽는 형식', () {
+    test('식물 하나면 PendingActions 가 그 식물로 해석한다', () {
+      final n = plan([makePlant(id: 'plant-1')]).single;
+
+      expect(jsonDecode(n.payload), {
+        'plantIds': ['plant-1'],
+      });
+
+      final parsed = PendingActions.parse(kActionTooWet, n.payload);
+      expect(parsed, isNotNull);
+      expect(parsed!.plantId, 'plant-1');
+      expect(parsed.response, SoilResponse.tooWet);
+    });
+
+    test('묶음 알림은 액션으로 해석되지 않는다', () {
+      // 묶음에는 액션 버튼을 붙이지 않지만, 혹시 payload 가 흘러들어와도
+      // 어느 식물의 응답인지 알 수 없으므로 조용히 무시해야 한다.
+      final n = plan([makePlant(id: 'a'), makePlant(id: 'b')]).single;
+      expect(n.style, NotificationStyle.digest);
+      expect(PendingActions.parse(kActionTooWet, n.payload), isNull);
+    });
+  });
+
+  group('지난 시각 이월', () {
+    List<PlannedNotification> roll(
+      List<PlannedNotification> input,
+      DateTime now,
+    ) =>
+        NotificationPlanner.rollPastSlotsForward(
+          input,
+          now: now,
+          hour: 9,
+          minute: 0,
+        );
+
+    test('알림 시각이 지나기 전이면 그대로 둔다', () {
+      final input = plan([makePlant(id: 'a', anchorDays: 10)]);
+      final result = roll(input, DateTime(2026, 6, 1, 8, 59));
+      expect(result.single.date, input.single.date);
+    });
+
+    test('오늘 시각이 지났으면 내일로 넘어간다', () {
+      // 오늘이 예정일인데 오후에 앱을 열었다. 지난 시각으로 예약하면
+      // Android 는 즉시 울리고 iOS 는 버린다 — 둘 다 원하지 않는다.
+      final today = DateTime(2026, 6, 1);
+      final input = [
+        PlannedNotification(
+          date: today,
+          plants: [makePlant(id: 'a')],
+          style: NotificationStyle.learning,
+        ),
+      ];
+
+      final result = roll(input, DateTime(2026, 6, 1, 14, 0));
+      expect(result.single.date, DateTime(2026, 6, 2));
+      expect(result.single.plants.map((p) => p.id), ['a']);
+    });
+
+    test('넘어간 자리에 이미 알림이 있으면 합친다 — 하루 1개는 유지된다', () {
+      final input = [
+        PlannedNotification(
+          date: DateTime(2026, 6, 1),
+          plants: [makePlant(id: 'overdue')],
+          style: NotificationStyle.learning,
+        ),
+        PlannedNotification(
+          date: DateTime(2026, 6, 2),
+          plants: [makePlant(id: 'tomorrow')],
+          style: NotificationStyle.learning,
+        ),
+      ];
+
+      final result = roll(input, DateTime(2026, 6, 1, 14, 0));
+
+      expect(result, hasLength(1), reason: '같은 날 알림이 둘이 되면 안 된다');
+      expect(result.single.date, DateTime(2026, 6, 2));
+      expect(
+        result.single.plants.map((p) => p.id),
+        containsAll(['overdue', 'tomorrow']),
+      );
+      expect(result.single.style, NotificationStyle.digest);
+    });
+
+    test('정각은 아직 지나지 않은 것으로 보지 않는다', () {
+      // 09:00 에 예약할 알림을 09:00 에 재예약하면 이미 울렸거나 울리는 중이다.
+      final input = [
+        PlannedNotification(
+          date: DateTime(2026, 6, 1),
+          plants: [makePlant(id: 'a')],
+          style: NotificationStyle.learning,
+        ),
+      ];
+      final result = roll(input, DateTime(2026, 6, 1, 9, 0));
+      expect(result.single.date, DateTime(2026, 6, 2));
+    });
+
+    test('이월해도 ID 는 옮겨간 날짜를 따른다', () {
+      final input = [
+        PlannedNotification(
+          date: DateTime(2026, 6, 1),
+          plants: [makePlant(id: 'a')],
+          style: NotificationStyle.learning,
+        ),
+      ];
+      final rolled = roll(input, DateTime(2026, 6, 1, 14, 0)).single;
+
+      final tomorrow = PlannedNotification(
+        date: DateTime(2026, 6, 2),
+        plants: [makePlant(id: 'b')],
+        style: NotificationStyle.learning,
+      );
+      expect(rolled.id, tomorrow.id, reason: '같은 날짜면 같은 슬롯이어야 한다');
+    });
   });
 }

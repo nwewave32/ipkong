@@ -13,14 +13,20 @@ import '../l10n/app_localizations.dart';
 /// 배워야 한다. 위젯을 공유해 그럴 여지를 없앤다.
 
 /// 사진 (선택). 탭하면 갤러리, 길게 누르면 카메라.
+///
+/// 경로 문자열이 아니라 **그릴 수 있는 파일**을 받는다. 저장된 사진은 파일
+/// 이름으로만 남아 있어 여기서 경로를 조립할 수 없고, 파일이 사라진 경우까지
+/// 이 위젯이 판단할 일은 아니다 ([PhotoStore.fileFor] 가 이미 걸러준다).
+/// 골라서 넘기는 값은 여전히 임시 파일의 경로다 — 저장 시점에 문서 폴더로
+/// 복사된다.
 class PhotoField extends StatelessWidget {
   const PhotoField({
-    required this.path,
+    required this.file,
     required this.onChanged,
     super.key,
   });
 
-  final String? path;
+  final File? file;
   final ValueChanged<String?> onChanged;
 
   Future<void> _pick(ImageSource source) async {
@@ -36,7 +42,7 @@ class PhotoField extends StatelessWidget {
   /// 두면 사진을 바꾸려던 사람이 실수로 지운다.
   Future<void> _onTap(BuildContext context) async {
     final s = AppStrings.of(context);
-    if (path == null) {
+    if (file == null) {
       await _pick(ImageSource.gallery);
       return;
     }
@@ -83,7 +89,7 @@ class PhotoField extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
 
-    final label = path == null ? s.photoOptional : s.photoChange;
+    final label = file == null ? s.photoOptional : s.photoChange;
 
     return Center(
       child: Column(
@@ -97,12 +103,14 @@ class PhotoField extends StatelessWidget {
               onTap: () => _onTap(context),
               customBorder: const CircleBorder(),
               child: ExcludeSemantics(
+                // foregroundImage 는 읽기에 실패하면 그리지 않고 child 를
+                // 그대로 보여준다 — 파일이 사라졌을 때 "사진 추가" 아이콘으로
+                // 자연스럽게 떨어진다.
                 child: CircleAvatar(
                   radius: 48,
-                  backgroundImage: path == null ? null : FileImage(File(path!)),
-                  child: path == null
-                      ? const Icon(Icons.add_a_photo_outlined, size: 28)
-                      : null,
+                  foregroundImage: file == null ? null : FileImage(file!),
+                  onForegroundImageError: file == null ? null : (_, _) {},
+                  child: const Icon(Icons.add_a_photo_outlined, size: 28),
                 ),
               ),
             ),

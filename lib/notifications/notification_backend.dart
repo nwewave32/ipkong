@@ -61,9 +61,9 @@ abstract class NotificationBackend {
 
 /// 실제 알림을 보내지 않고 로그만 남기는 구현.
 ///
-/// 알림 백엔드가 아직 붙지 않아도 앱 전체가 동작하고 테스트가 돌아가도록
-/// 하기 위한 것이다. 실기기 알림이 필요해지면 `LocalNotificationBackend`
-/// 로 갈아끼우면 된다 (`main.dart` 한 줄).
+/// 실기기에서는 `main.dart` 가 `LocalNotificationBackend` 를 주입한다.
+/// 이 구현은 테스트용으로 남는다 — 위젯 테스트에서 플랫폼 채널을 부르지 않고
+/// 예약 계획을 눈으로 확인할 수 있다.
 class DebugNotificationBackend implements NotificationBackend {
   @override
   Future<void> init({

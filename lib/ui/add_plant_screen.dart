@@ -48,8 +48,10 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
   Future<void> _save() async {
     final s = AppStrings.of(context);
     final typed = _nameController.text.trim();
+    // 화면을 닫은 뒤에 띄우므로 messenger 를 미리 잡아 둔다.
+    final messenger = ScaffoldMessenger.of(context);
 
-    await ref
+    final outcome = await ref
         .read(plantListProvider.notifier)
         .addPlant(
           name: typed.isEmpty ? s.plantNameHint : typed,
@@ -60,6 +62,12 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
           photoPath: _photoPath,
         );
     if (mounted) Navigator.of(context).pop();
+
+    // 사진만 실패했으면 저장은 그대로 두되 조용히 넘어가지는 않는다 —
+    // 사용자는 사진을 넣은 줄 알고 화면을 떠난다.
+    if (outcome == SaveOutcome.savedWithoutPhoto) {
+      messenger.showSnackBar(SnackBar(content: Text(s.photoSaveFailed)));
+    }
   }
 
   @override
@@ -79,7 +87,7 @@ class _AddPlantScreenState extends ConsumerState<AddPlantScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             PhotoField(
-              path: _photoPath,
+              file: ref.watch(photoStoreProvider).fileFor(_photoPath),
               onChanged: (p) => setState(() => _photoPath = p),
             ),
             const SizedBox(height: 24),

@@ -14,26 +14,29 @@ flutter run
 
 ## 현재 상태
 
-앱은 동작하고 테스트도 돌아가지만, **실기기 알림은 아직 나가지 않습니다.**
+알림이 실기기로 나갑니다. `lib/notifications/local_notification_backend.dart`
+가 `flutter_local_notifications` 22.x 어댑터이고, `main.dart` 가 이것을
+주입합니다. 아직 실기기에서 눌러보지는 않았습니다 (남은 작업 참고).
 
-`flutter_local_notifications` 22.x 는 `zonedSchedule` 이 플랫폼별 플러그인으로
-옮겨가고 인자도 전부 named 로 바뀌어서, 그 어댑터 한 파일만 비워 두었습니다.
-지금은 `DebugNotificationBackend` 가 붙어 있어 예약 내용을 콘솔에 찍습니다.
+어떤 날짜에 무엇을 보낼지는 `notification_plan.dart` 가 정하고, 어댑터는
+그 계획을 플랫폼 API 로 옮기기만 합니다. 계획 로직은 플랫폼을 모르므로
+단위 테스트가 됩니다.
 
-붙이는 방법:
+알아둘 것 세 가지:
 
-1. `lib/notifications/local_notification_backend.dart` 에 `NotificationBackend`
-   구현체를 만든다 (필요한 문구·액션은 `NotificationCopy` 에 이미 있습니다)
-2. `lib/main.dart` 의 아래 한 줄만 바꾼다
+- **iOS 액션 버튼은 알림마다 붙일 수 없습니다.** `initialize` 때
+  `DarwinNotificationCategory` 로 미리 등록하고, 알림은 카테고리 ID 만
+  지목합니다. 그래서 버튼 문구를 언어에 따라 바꾸려면 재등록이 필요합니다
+- **정시 알람을 쓰지 않습니다.** Android 14+ 에서 `SCHEDULE_EXACT_ALARM` 은
+  알람시계·캘린더 앱 전용이라 물주기 알림은 승인을 받을 수 없습니다.
+  `inexactAllowWhileIdle` 로 예약하고, 오차는 길어야 십수 분입니다
+- **액션은 앱을 열지 않습니다.** 백그라운드 isolate 로 떨어져
+  (`ipkongBackgroundActionHandler`) DB 대신 `PendingActions` 큐에만 적고,
+  앱이 다음에 열릴 때 반영됩니다
 
-```dart
-final NotificationBackend backend = DebugNotificationBackend();
-//                                  ^^^^^^^^^^^^^^^^^^^^^^^^ → LocalNotificationBackend()
-```
-
-**어떤 날짜에 무엇을 보낼지 정하는 로직은 이미 완성되어 있고 테스트도
-통과합니다** (`notification_plan.dart`). 어댑터는 그 계획을 플랫폼 API 로
-옮기기만 하면 됩니다.
+`DebugNotificationBackend` 는 남아 있습니다 — 위젯 테스트가
+`notificationBackendProvider` 를 오버라이드하지 않으므로, 기본값이 실제
+구현이면 테스트가 플랫폼 채널을 부르다 죽습니다.
 
 ---
 
@@ -113,6 +116,29 @@ next       = 늦은 쪽
 
 ---
 
+## 사진은 어디에 저장되나
+
+`Documents/photos/<uuid>.jpg` — 앱 문서 폴더입니다 (`lib/data/photo_store.dart`).
+`image_picker` 가 주는 경로는 OS 임시·캐시 폴더라 언제든 비워질 수 있어서,
+고른 사진을 문서 폴더로 복사해 두고 그 뒤로는 이 폴더만 봅니다. 문서 폴더를
+고른 이유는 사진이 **다시 만들 수 없는 사용자 콘텐츠**라 기기 백업에 들어가야
+하기 때문입니다.
+
+**DB 에는 절대 경로가 아니라 파일 이름만 저장합니다.** iOS 앱 컨테이너 경로에는
+UUID 가 들어 있고 그 UUID 는 앱 업데이트·백업 복원 때 바뀝니다. 절대 경로를
+저장하면 업데이트 한 번에 모든 사진이 깨지는데, 눈에 안 띄고 한참 뒤에 터지는
+종류의 버그라 테스트로 못을 박아 뒀습니다.
+
+복사는 사진을 **고를 때가 아니라 저장할 때** 합니다. 고르자마자 복사하면 폼을
+취소한 사진이 쓰레기로 남습니다. 사진을 바꿀 때는 새 파일을 먼저 쓰고 옛 파일을
+나중에 지우므로, 복사가 실패해도 기존 사진이 살아남습니다.
+
+v1.0 은 사진을 서버에 올리지 않습니다 — 올리는 순간 App Privacy 라벨의
+"데이터 수집 안 함" 이 깨집니다. v1.1 돌봄 링크는 어차피 서버가 필요하고,
+그때 여기서 쓰는 uuid 파일명이 그대로 스토리지 객체 키가 됩니다.
+
+---
+
 ## 설계 메모
 
 **왜 Drift 가 아니라 sqflite 인가.** 코드 생성(build_runner) 의존을 줄이려고
@@ -130,11 +156,19 @@ sqflite + 얇은 리포지토리로 시작했습니다. `PlantRepository` 인터
 
 ## 플랫폼 설정
 
-**iOS** — `ios/Runner/Info.plist`
+**iOS** — `ios/Runner/Info.plist` (사진·카메라 문구만 필요합니다)
+
+`UIBackgroundModes` 는 넣지 않았습니다. 그건 푸시(remote-notification)용이고
+로컬 알림은 액션 처리까지 포함해 요구하지 않습니다 — 쓰지도 않을 배경 모드를
+선언하면 App Review 에서 용도를 되묻습니다.
+
+대신 `AppDelegate.swift` 에 두 가지가 필요했습니다:
+`UNUserNotificationCenter` delegate 지정과, 백그라운드 isolate 에 플러그인을
+등록하는 `setPluginRegistrantCallback`. 이 앱은 UIScene 생명주기를 쓰므로
+후자는 `didFinishLaunchingWithOptions` 가 아니라
+`didInitializeImplicitFlutterEngine` 에 둡니다.
 
 ```xml
-<key>UIBackgroundModes</key>
-<array><string>remote-notification</string></array>
 <key>NSPhotoLibraryUsageDescription</key>
 <string>식물 사진을 등록하기 위해 사진 접근이 필요합니다.</string>
 <key>NSCameraUsageDescription</key>
@@ -145,19 +179,31 @@ sqflite + 얇은 리포지토리로 시작했습니다. `PlantRepository` 인터
 
 ```xml
 <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
 <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 ```
+
+`SCHEDULE_EXACT_ALARM` 은 일부러 넣지 않았습니다 (위 '현재 상태' 참고).
+
+`<application>` 안에는 리시버 3종이 필요합니다 —
+`ScheduledNotificationReceiver` 가 없으면 예약은 되는데 아무것도 뜨지 않고,
+`ActionBroadcastReceiver` 가 없으면 액션 버튼이 먹통이 되며,
+`ScheduledNotificationBootReceiver` 가 없으면 재부팅 후 예약이 사라집니다.
+
+`res/raw/keep.xml` 도 함께 두었습니다. 알림 아이콘(`ic_notification`)은 Dart
+문자열로만 참조하므로 R8 눈에는 미사용으로 보이고, 지워지면 알림이 **조용히**
+실패합니다.
 
 ---
 
 ## 남은 작업
 
-- [ ] `LocalNotificationBackend` 구현 (위 '현재 상태' 참고)
 - [ ] 실기기에서 알림 액션 버튼 확인 (종료 / 백그라운드 / 잠금화면)
+- [ ] 앱을 지웠다 깔거나 기기를 복원해도 사진이 따라오는지 실기기 확인
+- [ ] 재부팅 후 예약이 복구되는지 확인
+- [ ] 알림 문구 영어 — `NotificationCopy` 와 Android 채널 이름·설명이 아직
+      한국어 하드코딩
 - [ ] 식물 30개로 iOS 64개 상한 검증
 - [ ] 기기 날짜를 12월로 바꿔 겨울 모드 전환 테스트
 - [ ] 타임존을 `Australia/Sydney` 로 바꿔 남반구 테스트
-- [ ] 사진을 앱 문서 폴더로 복사 (현재는 `image_picker` 임시 경로를 그대로 저장)
 - [ ] 90일 미응답 시 `decayStaleLearning` 호출 지점 연결
 - [ ] 앱 아이콘 · 스플래시
