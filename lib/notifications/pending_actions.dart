@@ -67,14 +67,24 @@ class PendingActions {
   /// 알림 액션 하나를 도메인 의미로 해석한다.
   /// 묶음(digest) 알림에는 액션이 없으므로 식물이 하나일 때만 유효하다.
   static PendingAction? parse(String actionId, String payload) {
+    final plantId = singlePlantIdFrom(payload);
+    if (plantId == null) return null;
+    return PendingAction(
+      plantId: plantId,
+      response: responseFromActionId(actionId),
+    );
+  }
+
+  /// payload 가 가리키는 식물 하나. 알림 **본문**을 탭했을 때 쓴다.
+  ///
+  /// 버튼과 달리 답이 실려 있지 않다 — "이 식물을 물어보려던 알림"이라는
+  /// 사실만 알 수 있다. 묶음 알림은 식물이 여럿이라 하나를 고를 수 없으므로
+  /// null 이고, 그 경우 앱은 평소처럼 '오늘' 목록을 보여준다.
+  static String? singlePlantIdFrom(String payload) {
     try {
       final decoded = jsonDecode(payload) as Map<String, Object?>;
       final ids = (decoded['plantIds'] as List?)?.cast<String>() ?? const [];
-      if (ids.length != 1) return null;
-      return PendingAction(
-        plantId: ids.first,
-        response: responseFromActionId(actionId),
-      );
+      return ids.length == 1 ? ids.first : null;
     } catch (e) {
       debugPrint('[ipkong] failed to parse payload: $e');
       return null;

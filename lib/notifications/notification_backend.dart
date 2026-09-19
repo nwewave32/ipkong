@@ -18,10 +18,24 @@ class NotificationCopy {
         NotificationStyle.settled => '${n.plants.first.name}에 물 줄 시간이에요',
       };
 
-  static String? body(PlannedNotification n) => switch (n.style) {
+  /// 액션 버튼을 꺼내는 방법 안내.
+  ///
+  /// iOS 는 알림을 **길게 누르기 전에는 버튼이 아예 보이지 않는다.** 이걸 바꾸는
+  /// 공개 API 가 없다 — 카테고리 액션은 펼친 알림에만 나오고, 잠금화면에 버튼을
+  /// 붙여 보이게 하는 건 Live Activity 뿐인데 그건 서버 푸시가 있어야 띄운다.
+  /// 그래서 본문 한 줄로 알려주는 것 말고는 발견시킬 방법이 없다.
+  ///
+  /// Android 는 펼치면 버튼이 바로 보이므로 동사만 다르다.
+  static String hint({required bool longPress}) =>
+      longPress ? '길게 눌러 바로 답하기' : '펼쳐서 바로 답하기';
+
+  static String? body(PlannedNotification n, {String? hint}) =>
+      switch (n.style) {
+        // 묶음에는 액션이 없다. 안내를 붙이면 없는 버튼을 찾게 만든다.
         NotificationStyle.digest => n.plants.map((p) => p.name).join(', '),
-        NotificationStyle.learning => '어땠나요?',
-        NotificationStyle.settled => null,
+        NotificationStyle.learning =>
+          hint == null ? '어땠나요?' : '어땠나요? · $hint',
+        NotificationStyle.settled => hint,
       };
 
   /// (actionId, 표시 문구) 목록. digest 에는 액션을 붙이지 않는다.
@@ -45,8 +59,12 @@ class NotificationCopy {
 /// 이 인터페이스 뒤에만 `flutter_local_notifications` 가 존재한다.
 /// 패키지 API 가 바뀌어도 앱의 나머지는 영향을 받지 않는다.
 abstract class NotificationBackend {
+  /// [onAction] 은 액션 **버튼**을 누른 경우다 — 답이 실려 있으므로 곧장 반영한다.
+  /// [onOpen] 은 알림 **본문**을 탭한 경우다 — 답은 없고 어느 식물의 알림이었는지만
+  /// 알 수 있으므로, 앱이 그 식물의 답변 버튼을 꺼내주는 용도로만 쓴다.
   Future<void> init({
     required void Function(String actionId, String payload) onAction,
+    required void Function(String payload) onOpen,
   });
 
   Future<void> requestPermissions();
@@ -68,6 +86,7 @@ class DebugNotificationBackend implements NotificationBackend {
   @override
   Future<void> init({
     required void Function(String actionId, String payload) onAction,
+    required void Function(String payload) onOpen,
   }) async {
     debugPrint('[ipkong] DebugNotificationBackend 사용 중 — 실제 알림은 가지 않습니다');
   }

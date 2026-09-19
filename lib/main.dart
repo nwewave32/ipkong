@@ -8,6 +8,7 @@ import 'core/local_timezone.dart';
 import 'data/photo_store.dart';
 import 'notifications/local_notification_backend.dart';
 import 'notifications/notification_backend.dart';
+import 'notifications/pending_actions.dart';
 import 'providers/providers.dart';
 
 Future<void> main() async {
@@ -42,6 +43,12 @@ Future<void> main() async {
   await backend.init(
     onAction: (actionId, payload) {
       container.read(plantListProvider.notifier).handleAction(actionId, payload);
+    },
+    // 본문 탭에는 답이 실려 있지 않다. 반영할 게 없으니 어느 식물이었는지만
+    // 적어두고, [HomeShell] 이 그 식물의 답변 시트를 띄운다.
+    onOpen: (payload) {
+      container.read(answerPromptPlantIdProvider.notifier).state =
+          PendingActions.singlePlantIdFrom(payload);
     },
   );
 

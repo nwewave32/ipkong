@@ -182,6 +182,44 @@ void main() {
       expect(n.style, NotificationStyle.digest);
       expect(PendingActions.parse(kActionTooWet, n.payload), isNull);
     });
+
+    test('본문 탭 — 식물 하나면 그 식물 id 를 돌려준다', () {
+      final n = plan([makePlant(id: 'plant-1')]).single;
+      expect(PendingActions.singlePlantIdFrom(n.payload), 'plant-1');
+    });
+
+    test('본문 탭 — 묶음 알림은 고를 식물이 없다', () {
+      final n = plan([makePlant(id: 'a'), makePlant(id: 'b')]).single;
+      expect(PendingActions.singlePlantIdFrom(n.payload), isNull);
+    });
+
+    test('본문 탭 — 깨진 payload 는 조용히 null', () {
+      expect(PendingActions.singlePlantIdFrom('not json'), isNull);
+      expect(PendingActions.singlePlantIdFrom('{}'), isNull);
+    });
+  });
+
+  group('본문 안내 문구', () {
+    test('iOS 는 길게 누르기, Android 는 펼치기로 안내한다', () {
+      expect(NotificationCopy.hint(longPress: true), contains('길게'));
+      expect(NotificationCopy.hint(longPress: false), contains('펼'));
+    });
+
+    test('학습 중 알림은 질문 뒤에 안내가 붙는다', () {
+      final n = plan([makePlant(id: 'a')]).single;
+      expect(n.style, NotificationStyle.learning);
+      expect(NotificationCopy.body(n, hint: '길게 눌러 바로 답하기'),
+          '어땠나요? · 길게 눌러 바로 답하기');
+      // 안내를 주지 않으면 예전 문구 그대로다.
+      expect(NotificationCopy.body(n), '어땠나요?');
+    });
+
+    test('묶음 알림에는 안내를 붙이지 않는다', () {
+      // 액션 버튼이 없는 알림이다. 안내가 붙으면 없는 버튼을 찾게 된다.
+      final n = plan([makePlant(id: 'a'), makePlant(id: 'b')]).single;
+      expect(n.style, NotificationStyle.digest);
+      expect(NotificationCopy.body(n, hint: '길게 눌러 바로 답하기'), isNot(contains('길게')));
+    });
   });
 
   group('지난 시각 이월', () {

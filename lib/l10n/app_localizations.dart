@@ -71,6 +71,7 @@ class AppStrings {
 
   // ── 흙 상태 응답 ─────────────────────────────────────
   String get soilQuestion => _t('흙이 어땠나요?', 'How was the soil?');
+  String get settledQuestion => _t('물 줄 시간이에요', 'Time to water');
   String get tooWet => _t('축축했어요', 'Still moist');
   String get justRight => _t('적당했어요', 'Just right');
   String get tooDry => _t('바짝 말랐어요', 'Bone dry');

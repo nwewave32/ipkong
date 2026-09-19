@@ -75,6 +75,16 @@ final onboardingDoneProvider = StateProvider<bool>(
   (ref) => ref.watch(settingsRepositoryProvider).onboardingDone,
 );
 
+/// 알림 **본문**을 탭해서 들어온 식물의 id. [HomeShell] 이 답변 시트를 띄우고
+/// 곧바로 비운다.
+///
+/// iOS 에서 알림 액션 버튼은 길게 누르기 전에는 보이지 않고, 그 동작을 바꾸는
+/// API 가 없다. 길게 누를 줄 모르는 사람에게는 본문 탭이 유일한 경로이므로,
+/// 앱을 열어주는 데서 그치지 않고 그 식물의 답변 버튼까지 바로 꺼내준다.
+///
+/// 묶음 알림은 식물이 여럿이라 하나를 고를 수 없어 null 로 남는다.
+final answerPromptPlantIdProvider = StateProvider<String?>((ref) => null);
+
 /// 온보딩 마지막 화면에서 "식물 등록하기"로 나온 경우 true.
 ///
 /// 명세 §3 의 첫 실행 플로우는 온보딩 다음이 곧장 식물 추가다.

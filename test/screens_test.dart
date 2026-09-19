@@ -6,11 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ipkong/domain/models/enums.dart';
 import 'package:ipkong/domain/models/plant.dart';
 import 'package:ipkong/l10n/app_localizations.dart';
+import 'package:ipkong/notifications/notification_backend.dart';
+import 'package:ipkong/notifications/notification_plan.dart';
 import 'package:ipkong/providers/providers.dart';
 import 'package:ipkong/ui/edit_plant_screen.dart';
 import 'package:ipkong/ui/notify_time_sheet.dart';
 import 'package:ipkong/ui/onboarding_screen.dart';
 import 'package:ipkong/ui/settings_screen.dart';
+import 'package:ipkong/ui/soil_answer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 화면 렌더링 테스트.
@@ -75,6 +78,7 @@ Plant plant({
   bool anchorInWinter = false,
   PlantKind kind = PlantKind.normal,
   LightLevel light = LightLevel.medium,
+  bool isSettled = false,
 }) {
   final ts = DateTime(2026, 7, 1); // 북반구 여름 — 겨울 배율이 끼지 않는다
   return Plant(
@@ -86,6 +90,7 @@ Plant plant({
     anchorSource: anchorSource,
     anchorInWinter: anchorInWinter,
     factor: factor,
+    isSettled: isSettled,
     createdAt: ts,
     updatedAt: ts,
   );
@@ -671,6 +676,77 @@ void main() {
     testWidgets('폰 폭에서 넘치는 곳이 없다', (tester) async {
       await pumpPhone(tester);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  // iOS 는 알림을 길게 누르기 전에는 액션 버튼을 보여주지 않고, 그 동작을 바꿀
+  // 방법이 없다. 길게 누를 줄 모르는 사람에게는 본문 탭이 유일한 경로이므로,
+  // 그때 앱이 내미는 시트가 알림 버튼과 **같은 선택지**여야 한다.
+  group('알림 탭 답변 시트', () {
+    const s = AppStrings(Locale('ko'));
+
+    testWidgets('학습 중인 식물은 흙 상태 3택 — 알림 버튼과 같다', (tester) async {
+      await pumpScreen(
+        tester,
+        Scaffold(
+          body: SoilAnswerSheet(
+            plant: plant(),
+            onRespond: (_) {},
+            onWater: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('몬스테라'), findsOneWidget);
+      expect(find.text(s.soilQuestion), findsOneWidget);
+      expect(find.text(s.tooWet), findsOneWidget);
+      expect(find.text(s.justRight), findsOneWidget);
+      expect(find.text(s.tooDry), findsOneWidget);
+
+      // 알림 액션과 순서·개수가 어긋나면 안 된다.
+      final actions = NotificationCopy.actions(NotificationStyle.learning);
+      expect(actions.map((a) => a.$2).toList(),
+          [s.tooWet, s.justRight, s.tooDry]);
+    });
+
+    testWidgets('정착된 식물은 2택 — 줬어요 / 아직 축축해요', (tester) async {
+      await pumpScreen(
+        tester,
+        Scaffold(
+          body: SoilAnswerSheet(
+            plant: plant(isSettled: true),
+            onRespond: (_) {},
+            onWater: () {},
+          ),
+        ),
+      );
+
+      expect(find.text(s.settledQuestion), findsOneWidget);
+      expect(find.text(s.watered), findsOneWidget);
+      expect(find.text(s.stillMoist), findsOneWidget);
+      expect(find.text(s.justRight), findsNothing);
+    });
+
+    testWidgets('버튼을 누르면 그 답이 그대로 올라온다', (tester) async {
+      SoilResponse? responded;
+      var watered = false;
+
+      await pumpScreen(
+        tester,
+        Scaffold(
+          body: SoilAnswerSheet(
+            plant: plant(),
+            onRespond: (r) => responded = r,
+            onWater: () => watered = true,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text(s.tooDry));
+      await tester.pumpAndSettle();
+
+      expect(responded, SoilResponse.tooDry);
+      expect(watered, isFalse);
     });
   });
 }

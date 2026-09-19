@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../domain/models/enums.dart';
 import '../domain/models/plant.dart';
 import '../domain/watering_schedule.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'plant_detail_screen.dart';
+import 'soil_answer.dart';
 
 class TodayScreen extends ConsumerWidget {
   const TodayScreen({super.key});
@@ -113,39 +113,10 @@ class _TodayCard extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 4),
-            // 정착 전에는 흙 상태 3택, 정착 후에는 단순 2택.
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: plant.isSettled
-                  ? [
-                      FilledButton(
-                        onPressed: () => notifier.waterNow(plant.id),
-                        child: Text(s.watered),
-                      ),
-                      OutlinedButton(
-                        onPressed: () =>
-                            notifier.respond(plant.id, SoilResponse.tooWet),
-                        child: Text(s.stillMoist),
-                      ),
-                    ]
-                  : [
-                      OutlinedButton(
-                        onPressed: () =>
-                            notifier.respond(plant.id, SoilResponse.tooWet),
-                        child: Text(s.tooWet),
-                      ),
-                      FilledButton(
-                        onPressed: () =>
-                            notifier.respond(plant.id, SoilResponse.justRight),
-                        child: Text(s.justRight),
-                      ),
-                      OutlinedButton(
-                        onPressed: () =>
-                            notifier.respond(plant.id, SoilResponse.tooDry),
-                        child: Text(s.tooDry),
-                      ),
-                    ],
+            SoilAnswerButtons(
+              isSettled: plant.isSettled,
+              onRespond: (response) => notifier.respond(plant.id, response),
+              onWater: () => notifier.waterNow(plant.id),
             ),
           ],
         ),

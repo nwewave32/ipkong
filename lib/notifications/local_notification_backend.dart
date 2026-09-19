@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/foundation.dart';
@@ -76,9 +77,14 @@ class LocalNotificationBackend implements NotificationBackend {
   /// 하루에 한 번 흙을 만져보라는 알림에 초 단위 정확도는 의미가 없다.
   static const _scheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
 
+  /// 본문에 붙는 안내. iOS 는 길게 눌러야, Android 는 펼쳐야 버튼이 나온다.
+  static String get _hint =>
+      NotificationCopy.hint(longPress: Platform.isIOS);
+
   @override
   Future<void> init({
     required void Function(String actionId, String payload) onAction,
+    required void Function(String payload) onOpen,
   }) async {
     tzdata.initializeTimeZones();
     _setLocalLocation();
@@ -98,15 +104,24 @@ class LocalNotificationBackend implements NotificationBackend {
       ),
       // 앱이 떠 있을 때: 곧장 반영한다.
       onDidReceiveNotificationResponse: (response) {
-        final actionId = response.actionId;
         final payload = response.payload;
-        // actionId 가 없으면 본문을 탭한 것이다 — 앱이 열리는 것으로 충분하다.
-        if (actionId == null || payload == null) return;
-        onAction(actionId, payload);
+        if (payload == null) return;
+        final actionId = response.actionId;
+        // actionId 가 없으면 버튼이 아니라 본문을 탭한 것이다. 답이 실려 있지
+        // 않으므로 반영할 게 없고, 앱만 열어주면 그 사람은 다시 식물을 찾아야
+        // 한다 — 어느 식물의 알림이었는지 여기서 알려줘서 답변 버튼을 바로
+        // 꺼내준다.
+        if (actionId == null) {
+          onOpen(payload);
+        } else {
+          onAction(actionId, payload);
+        }
       },
       // 앱이 죽어 있거나 백그라운드일 때: 큐에 적어둔다.
       onDidReceiveBackgroundNotificationResponse: ipkongBackgroundActionHandler,
     );
+
+    await _handleLaunchNotification(onOpen);
 
     await _plugin
         .resolvePlatformSpecificImplementation<
@@ -121,6 +136,32 @@ class LocalNotificationBackend implements NotificationBackend {
             importance: Importance.defaultImportance,
           ),
         );
+  }
+
+  /// 앱이 죽어 있는 동안 알림을 탭해서 실행된 경우를 받아낸다.
+  ///
+  /// 콜드 스타트에서 `onDidReceiveNotificationResponse` 가 불리는지는 플랫폼과
+  /// 플러그인 버전에 따라 다르다. 불리지 않는 쪽에 걸리면 사용자는 알림을
+  /// 탭했는데 그냥 앱이 열리는 경험을 하게 되므로, 여기서 한 번 더 확인한다.
+  ///
+  /// ⚠️ **액션 버튼(actionId 가 있는 경우)은 절대 여기서 처리하지 않는다.**
+  /// 그쪽은 백그라운드 isolate 가 이미 큐에 적어 두었고, 여기서 또 처리하면
+  /// 같은 응답이 두 번 반영된다 ([PendingActions] 주석의 그 버그다).
+  /// 본문 탭은 [onOpen] 이 "이 식물을 보여달라"는 표시만 세우므로, 위 콜백과
+  /// 중복으로 불려도 같은 값을 두 번 쓸 뿐 해가 없다.
+  Future<void> _handleLaunchNotification(
+    void Function(String payload) onOpen,
+  ) async {
+    try {
+      final launch = await _plugin.getNotificationAppLaunchDetails();
+      if (launch == null || !launch.didNotificationLaunchApp) return;
+
+      final response = launch.notificationResponse;
+      final payload = response?.payload;
+      if (response?.actionId == null && payload != null) onOpen(payload);
+    } catch (e) {
+      debugPrint('[ipkong] 실행 알림을 확인하지 못했습니다: $e');
+    }
   }
 
   @override
@@ -161,7 +202,7 @@ class LocalNotificationBackend implements NotificationBackend {
         id: n.id,
         scheduledDate: tz.TZDateTime.from(at, tz.local),
         title: NotificationCopy.title(n),
-        body: NotificationCopy.body(n),
+        body: NotificationCopy.body(n, hint: _hint),
         payload: n.payload,
         androidScheduleMode: _scheduleMode,
         notificationDetails: _detailsFor(n.style),
