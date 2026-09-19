@@ -500,6 +500,79 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('취소·저장이 이름 있는 버튼으로 읽힌다', (tester) async {
+      // 둘 다 아이콘뿐이라 라벨이 없으면 VoiceOver 는 "버튼" 이라고만 읽는다.
+      // 어느 쪽이 저장인지 알 방법이 없어진다.
+      final handle = tester.ensureSemantics();
+      await openSheet(tester, const TimeOfDay(hour: 9, minute: 0));
+
+      for (final label in [ko.cancel, ko.save]) {
+        expect(
+          tester.getSemantics(
+            find.bySemanticsLabel(RegExp('^${RegExp.escape(label)}\$')),
+          ),
+          isSemantics(isButton: true, hasTapAction: true),
+          reason: '$label 이 누를 수 있는 버튼으로 읽히지 않는다',
+        );
+      }
+      handle.dispose();
+    });
+
+    testWidgets('휠 칸의 숫자들이 하나씩 따로 읽히지 않는다', (tester) async {
+      // ListWheelScrollView 는 보이지 않는 칸까지 만들어 둔다. 그대로 두면
+      // "시" 하나를 지나는 데 좌우 쓸기를 수십 번 해야 한다.
+      final handle = tester.ensureSemantics();
+      await openSheet(tester, const TimeOfDay(hour: 9, minute: 0));
+
+      // '시' 노드의 값은 9 다. 그런데 9 라는 **라벨**을 가진 노드가 따로
+      // 있으면 칸 글자가 새어 나온 것이다.
+      expect(find.semantics.byLabel(RegExp(r'^\d{1,2}$')), findsNothing);
+      expect(data(ko.wheelHour).value, '9');
+      handle.dispose();
+    });
+
+    testWidgets('현재 값과 같은 칩만 선택됨으로 읽힌다', (tester) async {
+      final handle = tester.ensureSemantics();
+      await openSheet(tester, const TimeOfDay(hour: 9, minute: 0));
+
+      SemanticsNode chip(String time) =>
+          tester.getSemantics(find.bySemanticsLabel(RegExp(RegExp.escape(time))));
+
+      // 프리셋은 오전 7:00 / 오전 9:00 / 오후 7:00 이고, 지금 값은 오전 9:00.
+      // 선택을 채움색으로만 표시하면 화면을 못 보는 사람은 지금 무엇이
+      // 골라져 있는지 알 수 없다.
+      expect(chip('오전 9:00'), isSemantics(isSelected: true));
+      expect(chip('오전 7:00'), isSemantics(isSelected: false));
+      expect(chip('오후 7:00'), isSemantics(isSelected: false));
+      handle.dispose();
+    });
+
+    testWidgets('화면을 보지 않고 오후 8:35 로 맞출 수 있다', (tester) async {
+      // 체크리스트의 시나리오. 늘리기·줄이기 액션만으로 임의의 시각에
+      // 닿을 수 있어야 휠이 스크린 리더로 쓸 수 있는 것이다.
+      final handle = tester.ensureSemantics();
+      final result = await openSheet(tester, const TimeOfDay(hour: 9, minute: 0));
+
+      Future<void> step(String label, SemanticsAction action) async {
+        tester.semantics.performAction(wheel(label), action);
+        await tester.pumpAndSettle();
+      }
+
+      await step(ko.wheelAmPm, SemanticsAction.increase); // 오전 → 오후
+      await step(ko.wheelHour, SemanticsAction.decrease); // 9 → 8
+      for (var i = 0; i < 7; i++) {
+        await step(ko.wheelMinute, SemanticsAction.increase); // 00 → 35
+      }
+
+      expect(data(ko.wheelAmPm).value, '오후');
+      expect(data(ko.wheelHour).value, '8');
+      expect(data(ko.wheelMinute).value, '35');
+
+      await confirm(tester);
+      expect(result(), const TimeOfDay(hour: 20, minute: 35));
+      handle.dispose();
+    });
+
     testWidgets('분은 00 에서 줄이면 55 로 돈다', (tester) async {
       final handle = tester.ensureSemantics();
       final result = await openSheet(tester, const TimeOfDay(hour: 9, minute: 0));
