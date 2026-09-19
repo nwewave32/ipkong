@@ -77,6 +77,30 @@ class AppStrings {
   String get tooDry => _t('바짝 말랐어요', 'Bone dry');
   String get stillMoist => _t('아직 축축해요', 'Still moist');
 
+  /// 세 선택지를 가르는 건 겉흙이 아니라 **속흙**이다. 이 한 줄이 없으면
+  /// '적당했어요' 를 무엇으로 판단해야 할지 알 수 없다 — 겉만 보면 마른
+  /// 흙과 속까지 마른 흙이 똑같이 보인다.
+  String get soilDepthHint => _t(
+    '검지를 두 마디(약 3cm) 찔러 넣어 보세요',
+    'Push your finger in about two knuckles (1 inch)',
+  );
+  String get tooWetHint =>
+      _t('손가락에 흙이 묻어나요', 'Soil sticks to your finger');
+  String get justRightHint => _t(
+    '겉은 말랐는데 속은 아직 서늘해요',
+    'Dry on top, still cool underneath',
+  );
+  String get tooDryHint => _t(
+    '두 마디 깊이까지 푸석하고 가벼워요',
+    'Crumbly and light all the way down',
+  );
+  String get wateredHint => _t(
+    '화분 밑으로 흘러나올 만큼 듬뿍',
+    'Enough to run out of the drainage hole',
+  );
+  String get stillMoistHint =>
+      _t('이번엔 건너뛰고 다음에 다시 여쭤볼게요', "We'll skip this one and ask again");
+
   // ── 식물 추가 ────────────────────────────────────────
   String get addPlant => _t('식물 추가', 'Add plant');
   String get plantName => _t('이름', 'Name');

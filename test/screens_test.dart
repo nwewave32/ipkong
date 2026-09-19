@@ -727,6 +727,56 @@ void main() {
       expect(find.text(s.justRight), findsNothing);
     });
 
+    testWidgets('선택지마다 무엇을 보고 고르는지가 적혀 있다', (tester) async {
+      // 라벨만 있으면 '축축'과 '바짝'은 분명한데 가운데 '적당'을 무엇으로
+      // 판단할지 알 수 없다. 세 설명이 모두 있어야 기준이 성립한다.
+      await pumpScreen(
+        tester,
+        Scaffold(
+          body: SoilAnswerSheet(
+            plant: plant(),
+            onRespond: (_) {},
+            onWater: () {},
+          ),
+        ),
+      );
+
+      expect(find.text(s.soilDepthHint), findsOneWidget);
+      expect(find.text(s.tooWetHint), findsOneWidget);
+      expect(find.text(s.justRightHint), findsOneWidget);
+      expect(find.text(s.tooDryHint), findsOneWidget);
+    });
+
+    testWidgets('선택지가 가로를 꽉 채우고 셋 다 너비가 같다', (tester) async {
+      await pumpScreen(
+        tester,
+        Scaffold(
+          body: SoilAnswerSheet(
+            plant: plant(),
+            onRespond: (_) {},
+            onWater: () {},
+          ),
+        ),
+      );
+      tester.view.physicalSize = const Size(393, 1200);
+      await tester.pumpAndSettle();
+
+      final widths = [s.tooWet, s.justRight, s.tooDry]
+          .map((label) => tester
+              .getSize(find.ancestor(
+                of: find.text(label),
+                matching: find.byType(OutlinedButton),
+              ))
+              .width)
+          .toList();
+
+      // 좌우 여백 16 씩을 뺀 나머지를 전부 쓴다.
+      expect(widths.first, closeTo(393 - 32, 1));
+      expect(widths[1], widths.first);
+      expect(widths[2], widths.first);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('버튼을 누르면 그 답이 그대로 올라온다', (tester) async {
       SoilResponse? responded;
       var watered = false;
