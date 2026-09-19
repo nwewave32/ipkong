@@ -241,22 +241,19 @@ class AppStrings {
     'Plants drink far slower in winter. This stretches the interval '
         'automatically so you do not overwater.',
   );
-  String get winterStatusActive => _t(
-    '지금은 겨울 — 간격을 1.4배로 늘리는 중 (다육은 1.9배)',
-    'Winter now — intervals stretched 1.4× (1.9× for succulents)',
-  );
-  String get winterStatusOffInWinter => _t(
-    '지금은 겨울이지만 꺼져 있어서 평소 간격으로 알립니다',
-    "It's winter, but this is off — using the usual interval",
-  );
-  String get winterStatusNotWinter => _t(
-    '지금은 겨울이 아니라 평소 간격이에요',
-    'Not winter right now — using the usual interval',
-  );
-  String get winterStatusTropical => _t(
-    '이 지역은 겨울이 없어서 늘 평소 간격이에요',
-    'No winter in this region — always the usual interval',
-  );
+  /// 지금 어떤 상태인지만 말한다. **배율 같은 계산 속사정은 넣지 않는다** —
+  /// 사용자가 할 수 있는 일은 스위치를 켜고 끄는 것뿐이고, 1.4배인지
+  /// 1.9배인지는 그 판단에 쓰이지 않는다. 무엇을 하는 기능인지는 바로 위
+  /// [winterModeDesc] 가 이미 말하고 있다.
+  ///
+  /// 알약(배지) 안에 들어가는 문구라 짧아야 한다.
+  String get winterStatusActive => _t('지금은 겨울', 'Winter now');
+  String get winterStatusOffInWinter =>
+      _t('겨울이지만 꺼져 있어요', 'Winter, but off');
+  String get winterStatusNotWinter =>
+      _t('지금은 겨울이 아니에요', 'Not winter');
+  String get winterStatusTropical =>
+      _t('이 지역은 겨울이 없어요', 'No winter here');
 
   // ── 데이터 내보내기 ───────────────────────────────────
   String get exportData => _t('내 식물 데이터 내보내기', 'Export my plant data');
