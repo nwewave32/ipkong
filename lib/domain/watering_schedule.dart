@@ -343,12 +343,6 @@ class WateringSchedule {
     );
   }
 
-  /// 90일간 응답이 없으면 학습을 1.0 쪽으로 절반 감쇠시킨다.
-  static Plant decayStaleLearning(Plant p, DateTime now) => p.copyWith(
-        factor: p.factor * 0.5 + 0.5,
-        updatedAt: now,
-      );
-
   /// 시각을 버리고 날짜만 남긴다.
   static DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 }

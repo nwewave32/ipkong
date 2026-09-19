@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../domain/models/enums.dart';
 import '../domain/models/plant.dart';
@@ -115,9 +114,7 @@ class PlantDetailScreen extends ConsumerWidget {
                       due.difference(today).inDays.clamp(0, 1 << 30),
                     ),
                   ),
-                  trailing: Text(
-                    DateFormat.MMMd().format(due.isBefore(today) ? today : due),
-                  ),
+                  trailing: Text(s.date(due.isBefore(today) ? today : due)),
                 ),
                 ListTile(
                   title: Text(
@@ -202,6 +199,7 @@ class _History extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final s = AppStrings.of(context);
     final repo = ref.watch(plantRepositoryProvider);
 
     return FutureBuilder<List<WateringEvent>>(
@@ -216,18 +214,21 @@ class _History extends ConsumerWidget {
         }
         return Column(
           children: events.map((e) {
+            // 답변 버튼과 **같은 문구·같은 이모지**를 쓴다. 기록을 훑는
+            // 사람은 자기가 누른 버튼을 찾는 것이지 새 어휘를 배우려는 게
+            // 아니다.
             final (icon, label) = switch (e.type) {
-              EventType.tooWet => ('💧', 'too wet'),
-              EventType.justRight => ('✅', 'just right'),
-              EventType.tooDry => ('🍂', 'too dry'),
-              EventType.watered => ('🚿', 'watered'),
+              EventType.tooWet => ('💧', s.tooWet),
+              EventType.justRight => ('👌', s.justRight),
+              EventType.tooDry => ('🏜️', s.tooDry),
+              EventType.watered => ('🚿', s.watered),
             };
             return ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
               leading: Text(icon, style: const TextStyle(fontSize: 18)),
-              title: Text(DateFormat.yMMMd().add_Hm().format(e.occurredAt)),
-              subtitle: Text(label),
+              title: Text(label),
+              subtitle: Text(s.dateTime(e.occurredAt)),
             );
           }).toList(),
         );

@@ -679,6 +679,34 @@ void main() {
     });
   });
 
+  group('날짜 표기', () {
+    const ko = AppStrings(Locale('ko'));
+    const en = AppStrings(Locale('en'));
+    final d = DateTime(2026, 9, 27, 14, 5);
+
+    test('한국어는 연·월·일을 우리말 순서로 쓴다', () {
+      expect(ko.date(d), '2026년 9월 27일');
+      expect(ko.dateTime(d), '2026년 9월 27일 오후 2:05');
+    });
+
+    test('연도를 생략하지 않는다', () {
+      // 기록은 해를 넘겨 쌓인다. "9월 27일" 만으로는 작년 것인지 알 수 없다.
+      expect(ko.date(DateTime(2025, 1, 3)), contains('2025년'));
+      expect(en.date(d), contains('2026'));
+    });
+
+    test('자정·정오가 12시로 읽힌다', () {
+      expect(ko.dateTime(DateTime(2026, 9, 27, 0, 0)), endsWith('오전 12:00'));
+      expect(ko.dateTime(DateTime(2026, 9, 27, 12, 30)), endsWith('오후 12:30'));
+    });
+
+    test('영어는 기기 로케일이 아니라 앱 언어를 따른다', () {
+      // 로케일 없이 DateFormat 을 쓰면 한국어를 골라도 "Sep 27" 이 나왔다.
+      expect(en.date(d), 'Sep 27, 2026');
+      expect(ko.date(d), isNot(contains('Sep')));
+    });
+  });
+
   // iOS 는 알림을 길게 누르기 전에는 액션 버튼을 보여주지 않고, 그 동작을 바꿀
   // 방법이 없다. 길게 누를 줄 모르는 사람에게는 본문 탭이 유일한 경로이므로,
   // 그때 앱이 내미는 시트가 알림 버튼과 **같은 선택지**여야 한다.

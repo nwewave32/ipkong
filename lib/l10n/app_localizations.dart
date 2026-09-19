@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:intl/intl.dart';
 
 /// 코드 생성 없는 수동 로컬라이제이션.
 ///
@@ -23,6 +24,29 @@ class AppStrings {
   String get appName => _t('잎콩', 'Ipkong');
   String get tagline =>
       _t('과습 없는 물주기 알림', 'Plant care that prevents overwatering');
+
+  // ── 날짜·시각 ────────────────────────────────────────
+  //
+  // `DateFormat` 을 로케일 없이 쓰면 앱 언어와 무관하게 기기 기본 로케일을
+  // 따라가서, 한국어를 골라도 "Sep 27" 이 나온다. 앱이 이미 언어를 직접
+  // 들고 있으므로(_ko) 여기서 갈라준다 — intl 로케일 데이터를 따로 초기화할
+  // 필요도 없어진다.
+
+  /// 날짜. 연도를 생략하지 않는다 — 기록은 해를 넘겨 쌓이고, "9월 27일"
+  /// 만으로는 작년 것인지 알 수 없다.
+  String date(DateTime d) =>
+      _ko ? '${d.year}년 ${d.month}월 ${d.day}일' : DateFormat.yMMMd('en_US').format(d);
+
+  /// 날짜 + 시각. 물주기 기록처럼 하루에 여러 번 쌓일 수 있는 곳에 쓴다.
+  String dateTime(DateTime d) => _ko
+      ? '${date(d)} ${_koClock(d)}'
+      : DateFormat.yMMMd('en_US').add_jm().format(d);
+
+  static String _koClock(DateTime d) {
+    final hour12 = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final minute = d.minute.toString().padLeft(2, '0');
+    return '${d.hour < 12 ? '오전' : '오후'} $hour12:$minute';
+  }
 
   // ── 탭 ──────────────────────────────────────────────
   String get tabToday => _t('오늘', 'Today');
