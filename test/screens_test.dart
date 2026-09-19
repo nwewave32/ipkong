@@ -12,8 +12,10 @@ import 'package:ipkong/providers/providers.dart';
 import 'package:ipkong/ui/edit_plant_screen.dart';
 import 'package:ipkong/ui/notify_time_sheet.dart';
 import 'package:ipkong/ui/onboarding_screen.dart';
+import 'package:ipkong/data/settings_repository.dart';
 import 'package:ipkong/ui/settings_screen.dart';
 import 'package:ipkong/ui/soil_answer.dart';
+import 'package:ipkong/ui/winter_prompt.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 화면 렌더링 테스트.
@@ -675,6 +677,98 @@ void main() {
 
     testWidgets('폰 폭에서 넘치는 곳이 없다', (tester) async {
       await pumpPhone(tester);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('겨울 확인 카드', () {
+    const s = AppStrings(Locale('ko'));
+    final winterDay = DateTime(2026, 12, 1); // 북반구 겨울
+
+    Widget opener(DateTime now) => Consumer(
+          builder: (context, ref, _) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => maybeShowWinterPrompt(context, ref, now: now),
+                child: const Text('열기'),
+              ),
+            ),
+          ),
+        );
+
+    Future<void> open(WidgetTester tester, {required DateTime now}) async {
+      await pumpScreen(tester, opener(now));
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<String?> askedSeason() async =>
+        SettingsRepository(await SharedPreferences.getInstance())
+            .winterAskedSeason;
+
+    testWidgets('겨울이면 카드가 뜬다', (tester) async {
+      await open(tester, now: winterDay);
+      expect(find.text(s.winterCardTitle), findsOneWidget);
+      expect(find.text(s.winterYes), findsOneWidget);
+      expect(find.text(s.winterNo), findsOneWidget);
+    });
+
+    testWidgets('겨울이 아니면 뜨지 않는다', (tester) async {
+      await open(tester, now: DateTime(2026, 7, 1)); // 북반구 여름
+      expect(find.text(s.winterCardTitle), findsNothing);
+    });
+
+    testWidgets('바깥을 눌러 닫으면 물어봤다고 적지 않는다', (tester) async {
+      // 답하지 않고 닫은 것이다. 여기서 기록하면 그 해 겨울 내내 다시
+      // 묻지 않게 되고, 사용자는 겨울 모드가 있다는 걸 영영 모른다.
+      await open(tester, now: winterDay);
+      expect(find.text(s.winterCardTitle), findsOneWidget);
+
+      await tester.tapAt(const Offset(10, 10)); // 배리어
+      await tester.pumpAndSettle();
+
+      expect(find.text(s.winterCardTitle), findsNothing);
+      expect(await askedSeason(), isNull);
+    });
+
+    testWidgets('닫은 뒤 다시 열면 또 묻는다', (tester) async {
+      await open(tester, now: winterDay);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+      expect(find.text(s.winterCardTitle), findsOneWidget);
+    });
+
+    testWidgets('이미 답한 겨울에는 다시 묻지 않는다', (tester) async {
+      await pumpScreen(tester, opener(winterDay));
+      await SettingsRepository(await SharedPreferences.getInstance())
+          .setWinterAskedSeason('2026-W');
+
+      await tester.tap(find.text('열기'));
+      await tester.pumpAndSettle();
+      expect(find.text(s.winterCardTitle), findsNothing);
+    });
+
+    testWidgets('폰 폭에서 카드가 좌우로 넉넉하게 선다', (tester) async {
+      await open(tester, now: winterDay);
+      tester.view.physicalSize = const Size(393, 1200);
+      await tester.pumpAndSettle();
+
+      // AlertDialog 의 렌더박스는 화면 전체다. 실제로 그려지는 카드 표면을
+      // 재야 좌우 여백이 보인다.
+      final surface = find
+          .descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(Material),
+          )
+          .first;
+      final rect = tester.getRect(surface);
+
+      // 기본 여백(좌우 40)이면 313 에 그친다.
+      expect(rect.left, closeTo(20, 1));
+      expect(rect.width, closeTo(393 - 40, 1));
       expect(tester.takeException(), isNull);
     });
   });
