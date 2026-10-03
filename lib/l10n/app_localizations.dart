@@ -1,3 +1,5 @@
+import 'dart:ui' show PlatformDispatcher;
+
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
@@ -15,6 +17,24 @@ class AppStrings {
   static AppStrings of(BuildContext context) =>
       Localizations.of<AppStrings>(context, AppStrings) ??
       const AppStrings(Locale('en'));
+
+  /// 위젯 트리 **밖**에서 쓸 로케일 판정.
+  ///
+  /// 알림 문구는 `main()` 에서, 화면이 하나도 없을 때 만들어진다. 거기엔
+  /// Localizations 가 없으므로 직접 골라야 하는데, MaterialApp 의 기본
+  /// 해석과 결과가 달라지면 **화면은 영어인데 알림은 한국어로** 가는
+  /// 일이 생긴다. 그래서 같은 규칙을 따른다 — 저장된 선택이 있으면 그것,
+  /// 없으면 기기 언어 중 지원하는 첫 번째, 그것도 없으면
+  /// [supportedLocales] 의 첫 번째(basicLocaleListResolution 과 같다).
+  static Locale resolve(String? storedCode) {
+    if (storedCode != null) return Locale(storedCode);
+    for (final device in PlatformDispatcher.instance.locales) {
+      for (final supported in supportedLocales) {
+        if (supported.languageCode == device.languageCode) return supported;
+      }
+    }
+    return supportedLocales.first;
+  }
 
   bool get _ko => locale.languageCode == 'ko';
 
@@ -197,6 +217,33 @@ class AppStrings {
     "Still moist. Check your pot's drainage or the saucer.",
   );
 
+  // ── 알림 ────────────────────────────────────────────
+  //
+  // 액션 버튼 라벨은 여기 다시 두지 않는다. 위의 tooWet / justRight /
+  // tooDry / watered / stillMoist 를 그대로 쓴다 — 알림 버튼과 앱 안
+  // 답변 시트는 **같은 문구여야** 한다. 따로 두면 한쪽만 고치는 날이 온다.
+
+  String get notifyChannelName => _t('물주기 알림', 'Watering reminders');
+  String get notifyChannelDescription => _t(
+    '하루 한 번, 오늘 확인할 식물만 알려드립니다.',
+    'Once a day, and only the plants worth checking.',
+  );
+
+  String notifyDigestTitle(int count) => _ko
+      ? '오늘 확인할 식물 $count개'
+      : '$count ${count == 1 ? "plant" : "plants"} to check today';
+  String notifyLearningTitle(String name) =>
+      _ko ? '$name 흙 한번 만져보세요' : "Touch $name's soil";
+  String notifySettledTitle(String name) =>
+      _ko ? '$name에 물 줄 시간이에요' : 'Time to water $name';
+
+  String get notifyLearningBody => _t('어땠나요?', 'How was it?');
+
+  /// 액션 버튼을 꺼내는 방법. iOS 는 길게 눌러야, Android 는 펼쳐야 나온다.
+  String notifyHint({required bool longPress}) => longPress
+      ? _t('길게 눌러 바로 답하기', 'Press and hold to answer')
+      : _t('펼쳐서 바로 답하기', 'Expand to answer');
+
   // ── 겨울 모드 ────────────────────────────────────────
   String get winterCardTitle => _t('날이 추워졌나요?', 'Has it turned cold?');
   String get winterCardBody => _t(
@@ -235,6 +282,21 @@ class AppStrings {
   String get languageSystem => _t('시스템 설정', 'System');
   String get comingSoon => _t('곧 나올 기능', 'Coming soon');
 
+  // ── 앱 정보 ──────────────────────────────────────────
+  String get settingsAbout => _t('앱 정보', 'About');
+  String get privacyPolicy => _t('개인정보처리방침', 'Privacy policy');
+
+  /// 링크를 누르기 전에 결론을 먼저 말한다. 방침을 열어보지 않는 사람이
+  /// 대부분이고, 이 앱에서 그 결론이야말로 자랑거리다.
+  String get privacyPolicyDesc => _t(
+    '잎콩은 아무것도 수집하지 않습니다. 전문은 브라우저에서 열립니다.',
+    'Ipkong collects nothing. Opens the full text in your browser.',
+  );
+  String get privacyPolicyFailed => _t(
+    '브라우저를 열 수 없었습니다. 주소를 복사했어요.',
+    "Couldn't open a browser, so the address was copied instead.",
+  );
+
   // ── 겨울 모드 ────────────────────────────────────────
   String get winterModeDesc => _t(
     '겨울엔 식물이 물을 훨씬 천천히 씁니다. 켜두면 물주기 간격을 자동으로 늘려 과습을 막아요.',
@@ -262,16 +324,21 @@ class AppStrings {
     'Save your plants and watering history as a file, or copy them.',
   );
   String get exportDialogTitle => _t('무엇이 나가나요?', 'What gets exported?');
+  /// 복사냐 파일이냐는 이 다이얼로그 **다음에** 고른다. 어느 쪽인지 단정하지
+  /// 않는다. 사진이 빠진다는 말은 여기 둔다 — 제목이 "무엇이 나가나요?" 이고,
+  /// 이걸 모르고 기기를 바꾸면 사진만 통째로 잃는다.
   String exportDialogBody(int plants, int events) => _ko
-      ? '식물 $plants개와 물주기 기록 $events건이 JSON 파일로 저장됩니다.\n\n'
+      ? '식물 $plants개와 물주기 기록 $events건이 나갑니다. '
+            '사진은 포함되지 않아요.\n\n'
             '잎콩은 이 데이터를 어디에도 보내지 않고 기기 안에만 둡니다. '
             '그래서 앱을 지우거나 기기를 바꾸면 되살릴 방법이 없어요. '
             '메모 앱이나 메일에 붙여넣어 보관해두세요.'
       : '$plants ${plants == 1 ? "plant" : "plants"} and $events watering '
-            '${events == 1 ? "record" : "records"} will be copied as text.\n\n'
+            '${events == 1 ? "record" : "records"} will be exported. '
+            'Photos are not included.\n\n'
             'Ipkong keeps this data on your device and never sends it anywhere, '
             'so deleting the app or switching phones loses it for good. '
-            'Paste it somewhere safe — a notes app or an email to yourself.';
+            'Keep it somewhere safe — a notes app or an email to yourself.';
   String get exportNothing => _t('아직 등록한 식물이 없어요', 'No plants registered yet');
   String get exportCopy => _t('복사', 'Copy');
   String get exportShare => _t('파일로 저장', 'Save as file');

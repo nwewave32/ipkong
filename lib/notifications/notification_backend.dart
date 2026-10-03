@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show Locale;
 
+import '../l10n/app_localizations.dart';
 import 'notification_plan.dart';
 
 /// 알림 액션 ID. 백그라운드 콜백에서도 쓰이므로 최상위 상수로 둔다.
@@ -9,13 +11,25 @@ const kActionTooDry = 'too_dry';
 const kActionWatered = 'watered';
 
 /// 알림 문구. 백엔드 구현체가 가져다 쓴다.
+///
+/// 정적 클래스였다가 [AppStrings] 를 받는 인스턴스가 됐다. 알림은 화면이
+/// 하나도 없을 때(예약 시점·백그라운드) 만들어지므로 Localizations 를 쓸 수
+/// 없고, 언어를 밖에서 넣어 주는 수밖에 없다.
 class NotificationCopy {
-  const NotificationCopy._();
+  const NotificationCopy(this.s);
 
-  static String title(PlannedNotification n) => switch (n.style) {
-        NotificationStyle.digest => '오늘 확인할 식물 ${n.plants.length}개',
-        NotificationStyle.learning => '${n.plants.first.name} 흙 한번 만져보세요',
-        NotificationStyle.settled => '${n.plants.first.name}에 물 줄 시간이에요',
+  NotificationCopy.of(Locale locale) : s = AppStrings(locale);
+
+  final AppStrings s;
+
+  String get channelName => s.notifyChannelName;
+  String get channelDescription => s.notifyChannelDescription;
+
+  String title(PlannedNotification n) => switch (n.style) {
+        NotificationStyle.digest => s.notifyDigestTitle(n.plants.length),
+        NotificationStyle.learning =>
+          s.notifyLearningTitle(n.plants.first.name),
+        NotificationStyle.settled => s.notifySettledTitle(n.plants.first.name),
       };
 
   /// 액션 버튼을 꺼내는 방법 안내.
@@ -26,30 +40,31 @@ class NotificationCopy {
   /// 그래서 본문 한 줄로 알려주는 것 말고는 발견시킬 방법이 없다.
   ///
   /// Android 는 펼치면 버튼이 바로 보이므로 동사만 다르다.
-  static String hint({required bool longPress}) =>
-      longPress ? '길게 눌러 바로 답하기' : '펼쳐서 바로 답하기';
+  String hint({required bool longPress}) => s.notifyHint(longPress: longPress);
 
-  static String? body(PlannedNotification n, {String? hint}) =>
-      switch (n.style) {
+  String? body(PlannedNotification n, {String? hint}) => switch (n.style) {
         // 묶음에는 액션이 없다. 안내를 붙이면 없는 버튼을 찾게 만든다.
         NotificationStyle.digest => n.plants.map((p) => p.name).join(', '),
-        NotificationStyle.learning =>
-          hint == null ? '어땠나요?' : '어땠나요? · $hint',
+        NotificationStyle.learning => hint == null
+            ? s.notifyLearningBody
+            : '${s.notifyLearningBody} · $hint',
         NotificationStyle.settled => hint,
       };
 
   /// (actionId, 표시 문구) 목록. digest 에는 액션을 붙이지 않는다.
-  static List<(String, String)> actions(NotificationStyle style) =>
-      switch (style) {
+  ///
+  /// 문구는 앱 안 답변 시트와 **같은 것을 쓴다.** 알림 버튼을 눌러 답하든
+  /// 시트에서 답하든 같은 말이어야 하고, 따로 두면 한쪽만 고치게 된다.
+  List<(String, String)> actions(NotificationStyle style) => switch (style) {
         NotificationStyle.digest => const [],
-        NotificationStyle.learning => const [
-            (kActionTooWet, '축축했어요'),
-            (kActionJustRight, '적당했어요'),
-            (kActionTooDry, '바짝 말랐어요'),
+        NotificationStyle.learning => [
+            (kActionTooWet, s.tooWet),
+            (kActionJustRight, s.justRight),
+            (kActionTooDry, s.tooDry),
           ],
-        NotificationStyle.settled => const [
-            (kActionWatered, '줬어요'),
-            (kActionTooWet, '아직 축축해요'),
+        NotificationStyle.settled => [
+            (kActionWatered, s.watered),
+            (kActionTooWet, s.stillMoist),
           ],
       };
 }
@@ -69,6 +84,12 @@ abstract class NotificationBackend {
 
   Future<void> requestPermissions();
 
+  /// 앱 언어가 바뀌었다. 알림 쪽 문구를 다시 등록한다.
+  ///
+  /// 이것만으로는 **이미 예약된 알림의 제목·본문이 바뀌지 않는다.** 부른 쪽이
+  /// 이어서 재예약까지 돌려야 한다 (`plantListProvider.load()`).
+  Future<void> setLocale(Locale locale);
+
   /// 기존 예약을 모두 지우고 [plan] 대로 다시 예약한다.
   Future<void> reschedule(
     List<PlannedNotification> plan, {
@@ -83,6 +104,17 @@ abstract class NotificationBackend {
 /// 이 구현은 테스트용으로 남는다 — 위젯 테스트에서 플랫폼 채널을 부르지 않고
 /// 예약 계획을 눈으로 확인할 수 있다.
 class DebugNotificationBackend implements NotificationBackend {
+  DebugNotificationBackend({Locale locale = const Locale('ko')})
+      : _copy = NotificationCopy.of(locale);
+
+  NotificationCopy _copy;
+
+  @override
+  Future<void> setLocale(Locale locale) async {
+    _copy = NotificationCopy.of(locale);
+    debugPrint('[ipkong] 알림 언어 → ${locale.languageCode}');
+  }
+
   @override
   Future<void> init({
     required void Function(String actionId, String payload) onAction,
@@ -104,7 +136,7 @@ class DebugNotificationBackend implements NotificationBackend {
         '${minute.toString().padLeft(2, '0')})');
     for (final n in plan) {
       debugPrint('  ${n.date.toIso8601String().substring(0, 10)}  '
-          '[${n.style.name}] ${NotificationCopy.title(n)}');
+          '[${n.style.name}] ${_copy.title(n)}');
     }
   }
 }

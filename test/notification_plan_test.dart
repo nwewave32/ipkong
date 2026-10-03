@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ipkong/domain/models/enums.dart';
 import 'package:ipkong/domain/models/plant.dart';
@@ -9,8 +10,12 @@ import 'package:ipkong/notifications/pending_actions.dart';
 
 final d0 = DateTime(2026, 6, 1); // 북반구 여름 — 계절 배율 없음
 
+final ko = NotificationCopy.of(const Locale('ko'));
+final en = NotificationCopy.of(const Locale('en'));
+
 Plant makePlant({
   required String id,
+  String? name,
   double anchorDays = 10,
   bool isSettled = false,
   bool isArchived = false,
@@ -19,7 +24,7 @@ Plant makePlant({
   final ts = createdAt ?? d0;
   return Plant(
     id: id,
-    name: id,
+    name: name ?? id,
     kind: PlantKind.normal,
     light: LightLevel.medium,
     anchorDays: anchorDays,
@@ -201,24 +206,83 @@ void main() {
 
   group('본문 안내 문구', () {
     test('iOS 는 길게 누르기, Android 는 펼치기로 안내한다', () {
-      expect(NotificationCopy.hint(longPress: true), contains('길게'));
-      expect(NotificationCopy.hint(longPress: false), contains('펼'));
+      expect(ko.hint(longPress: true), contains('길게'));
+      expect(ko.hint(longPress: false), contains('펼'));
     });
 
     test('학습 중 알림은 질문 뒤에 안내가 붙는다', () {
       final n = plan([makePlant(id: 'a')]).single;
       expect(n.style, NotificationStyle.learning);
-      expect(NotificationCopy.body(n, hint: '길게 눌러 바로 답하기'),
-          '어땠나요? · 길게 눌러 바로 답하기');
+      expect(ko.body(n, hint: '길게 눌러 바로 답하기'), '어땠나요? · 길게 눌러 바로 답하기');
       // 안내를 주지 않으면 예전 문구 그대로다.
-      expect(NotificationCopy.body(n), '어땠나요?');
+      expect(ko.body(n), '어땠나요?');
     });
 
     test('묶음 알림에는 안내를 붙이지 않는다', () {
       // 액션 버튼이 없는 알림이다. 안내가 붙으면 없는 버튼을 찾게 된다.
       final n = plan([makePlant(id: 'a'), makePlant(id: 'b')]).single;
       expect(n.style, NotificationStyle.digest);
-      expect(NotificationCopy.body(n, hint: '길게 눌러 바로 답하기'), isNot(contains('길게')));
+      expect(ko.body(n, hint: '길게 눌러 바로 답하기'), isNot(contains('길게')));
+    });
+  });
+
+  group('알림 문구 — 영어', () {
+    /// 영어 사용자에게 한국어 알림이 가던 것이 출시 차단 항목이었다.
+    /// 제목·본문·안내·버튼 네 군데가 모두 언어를 타야 한다 — 하나라도
+    /// 빠지면 알림 한 장 안에서 두 언어가 섞인다.
+
+    test('제목에 한글이 남지 않는다 — 세 가지 형태 전부', () {
+      final learning = plan([makePlant(id: 'a', name: 'Monstera')]).single;
+      final digest = plan([
+        makePlant(id: 'a', name: 'Monstera'),
+        makePlant(id: 'b', name: 'Pothos'),
+      ]).single;
+      final settled = plan([
+        makePlant(id: 'a', name: 'Monstera', isSettled: true),
+      ]).single;
+
+      for (final n in [learning, digest, settled]) {
+        expect(en.title(n), isNot(matches(RegExp('[가-힣]'))),
+            reason: '${n.style.name} 제목에 한국어가 남았다');
+      }
+    });
+
+    test('묶음 제목은 1개와 2개 이상의 복수형이 다르다', () {
+      final one = plan([makePlant(id: 'a')]).single;
+      expect(en.title(one), isNot(contains('plants')));
+
+      final two = plan([makePlant(id: 'a'), makePlant(id: 'b')]).single;
+      expect(en.title(two), contains('2 plants'));
+    });
+
+    test('본문과 안내도 영어다', () {
+      final n = plan([makePlant(id: 'a', name: 'Monstera')]).single;
+      expect(en.hint(longPress: true), isNot(matches(RegExp('[가-힣]'))));
+      expect(en.body(n, hint: en.hint(longPress: true)),
+          isNot(matches(RegExp('[가-힣]'))));
+    });
+
+    test('액션 버튼도 영어다 — 3택·2택 모두', () {
+      for (final style in [
+        NotificationStyle.learning,
+        NotificationStyle.settled,
+      ]) {
+        for (final (_, label) in en.actions(style)) {
+          expect(label, isNot(matches(RegExp('[가-힣]'))),
+              reason: '${style.name} 버튼에 한국어가 남았다');
+        }
+      }
+    });
+
+    test('Android 채널 이름·설명도 영어다', () {
+      // 사용자가 시스템 알림 설정에서 보는 문구다.
+      expect(en.channelName, isNot(matches(RegExp('[가-힣]'))));
+      expect(en.channelDescription, isNot(matches(RegExp('[가-힣]'))));
+    });
+
+    test('식물 이름은 번역하지 않고 그대로 넣는다', () {
+      final n = plan([makePlant(id: 'a', name: '몬스테라')]).single;
+      expect(en.title(n), contains('몬스테라'));
     });
   });
 

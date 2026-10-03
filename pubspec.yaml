@@ -48,6 +48,11 @@ dependencies:
   uuid: ^4.6.0
   share_plus: ^13.3.0
   intl: ^0.20.2
+  # 개인정보처리방침을 **시스템 브라우저에 넘기기만** 한다. WebView 를 쓰면
+  # INTERNET 권한이 릴리스 매니페스트에 들어가고, 방침 본문의 "네트워크로
+  # 데이터를 주고받는 기능이 없다"가 거짓이 된다. LaunchMode 는 반드시
+  # externalApplication (settings_screen.dart 참고).
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:

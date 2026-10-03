@@ -676,6 +676,11 @@ void main() {
         (Icons.ac_unit, s.winterMode, find.byType(Switch)),
         (Icons.ios_share, s.exportData, null),
         (Icons.language, s.language, find.byType(DropdownButton<String?>)),
+        (
+          Icons.privacy_tip_outlined,
+          s.privacyPolicy,
+          find.byIcon(Icons.open_in_new),
+        ),
       ];
 
       for (final (icon, title, trailing) in rows) {
@@ -751,6 +756,53 @@ void main() {
     testWidgets('폰 폭에서 넘치는 곳이 없다', (tester) async {
       await pumpPhone(tester);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('설정 — 개인정보처리방침', () {
+    testWidgets('설정 화면에서 방침에 닿을 수 있다', (tester) async {
+      // 스토어 메타데이터에만 URL 을 넣어두면 앱을 쓰는 사람은 영영 못 본다.
+      await pumpScreen(tester, const SettingsScreen());
+      const s = AppStrings(Locale('ko'));
+
+      expect(find.text(s.privacyPolicy), findsOneWidget);
+    });
+
+    testWidgets('누르기 전에 결론을 먼저 말한다', (tester) async {
+      // 방침을 열어보는 사람은 거의 없다. "아무것도 수집하지 않는다"는
+      // 이 앱의 자랑이므로 링크 뒤에 숨기지 않는다.
+      await pumpScreen(tester, const SettingsScreen());
+      const s = AppStrings(Locale('ko'));
+
+      expect(find.text(s.privacyPolicyDesc), findsOneWidget);
+    });
+
+    testWidgets('앱을 벗어난다는 표시가 있다', (tester) async {
+      // 브라우저가 갑자기 뜨는 것이 사고처럼 느껴지면 안 된다.
+      await pumpScreen(tester, const SettingsScreen());
+
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text(const AppStrings(Locale('ko')).privacyPolicy),
+            matching: find.byType(InkWell),
+          ),
+          matching: find.byIcon(Icons.open_in_new),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('영어에서도 뜬다', (tester) async {
+      await pumpScreen(
+        tester,
+        const SettingsScreen(),
+        locale: const Locale('en'),
+      );
+      const s = AppStrings(Locale('en'));
+
+      expect(find.text(s.privacyPolicy), findsOneWidget);
+      expect(find.text(s.privacyPolicyDesc), findsOneWidget);
     });
   });
 
@@ -899,7 +951,7 @@ void main() {
       expect(find.text(s.tooDry), findsOneWidget);
 
       // 알림 액션과 순서·개수가 어긋나면 안 된다.
-      final actions = NotificationCopy.actions(NotificationStyle.learning);
+      final actions = NotificationCopy(s).actions(NotificationStyle.learning);
       expect(actions.map((a) => a.$2).toList(),
           [s.tooWet, s.justRight, s.tooDry]);
     });

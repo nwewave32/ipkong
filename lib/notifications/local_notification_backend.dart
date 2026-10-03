@@ -1,5 +1,5 @@
 import 'dart:io' show Platform;
-import 'dart:ui' show DartPluginRegistrant;
+import 'dart:ui' show DartPluginRegistrant, Locale;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -44,21 +44,30 @@ void ipkongBackgroundActionHandler(NotificationResponse response) {
 /// 언제 무엇을 보낼지는 [NotificationPlanner] 가 이미 정해서 넘겨준다.
 /// 이 클래스는 그 계획을 플랫폼 API 로 옮기기만 한다.
 class LocalNotificationBackend implements NotificationBackend {
-  LocalNotificationBackend({this.timeZoneName});
+  LocalNotificationBackend({required Locale locale, this.timeZoneName})
+      : _copy = NotificationCopy.of(locale);
 
   /// 기기의 IANA 타임존 이름 (예: `Asia/Seoul`). main() 이 기후대 판정을 위해
   /// 이미 구한 값을 그대로 받는다 — 플랫폼 호출을 두 번 할 이유가 없다.
   final String? timeZoneName;
 
+  /// 알림 문구. 언어를 바꾸면 [setLocale] 이 갈아끼운다.
+  NotificationCopy _copy;
+
+  /// 재초기화에 필요해서 들고 있는다 ([setLocale] 참고).
+  void Function(String actionId, String payload)? _onAction;
+  void Function(String payload)? _onOpen;
+
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  /// Android 알림 채널. 사용자가 설정에서 보게 되는 이름이다.
-  // TODO(l10n): 채널 이름·설명과 [NotificationCopy] 가 아직 한국어 하드코딩이다.
-  //  영어 알림은 체크리스트 C 의 별도 항목으로 남아 있다.
+  /// Android 알림 채널. 이름·설명은 사용자가 시스템 설정에서 보는 문구라
+  /// 언어를 따라가야 한다.
+  ///
+  /// **ID 는 절대 바꾸지 않는다.** 바꾸면 사용자가 그 채널에 해둔 설정(소리 끔,
+  /// 중요도 낮춤)이 통째로 날아가고 새 채널이 기본값으로 생긴다. 같은 ID 로
+  /// 다시 만들면 Android 가 이름과 설명만 갱신해 준다.
   static const _channelId = 'ipkong_watering';
-  static const _channelName = '물주기 알림';
-  static const _channelDescription = '하루 한 번, 오늘 확인할 식물만 알려드립니다.';
 
   /// Android 상태바 아이콘. 알파 채널만 쓰는 단색 실루엣이어야 한다.
   static const _androidIcon = 'ic_notification';
@@ -78,17 +87,47 @@ class LocalNotificationBackend implements NotificationBackend {
   static const _scheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
 
   /// 본문에 붙는 안내. iOS 는 길게 눌러야, Android 는 펼쳐야 버튼이 나온다.
-  static String get _hint =>
-      NotificationCopy.hint(longPress: Platform.isIOS);
+  String get _hint => _copy.hint(longPress: Platform.isIOS);
 
   @override
   Future<void> init({
     required void Function(String actionId, String payload) onAction,
     required void Function(String payload) onOpen,
   }) async {
+    _onAction = onAction;
+    _onOpen = onOpen;
+
     tzdata.initializeTimeZones();
     _setLocalLocation();
 
+    await _initializePlugin();
+    await _handleLaunchNotification(onOpen);
+    await _createOrUpdateChannel();
+  }
+
+  /// 앱 언어가 바뀌었다. 알림 쪽 문구를 현재 언어로 다시 등록한다.
+  ///
+  /// **왜 initialize 를 다시 부르는가.** iOS 액션 버튼 문구는 알림마다 붙이는
+  /// 게 아니라 카테고리에 박혀 있고, 카테고리를 등록하는 공개 API 는
+  /// `initialize` 하나뿐이다. 네이티브 쪽을 보면 그 경로가
+  /// `setNotificationCategories:` 로 **등록된 카테고리 전체를 교체**하므로,
+  /// 다시 부르는 것이 곧 재등록이다. 중복 등록이 쌓이지는 않는다.
+  ///
+  /// 여기서 [_handleLaunchNotification] 은 **부르지 않는다.** 그건 "알림을
+  /// 탭해서 앱이 켜졌는가" 를 보는 것이라, 언어를 바꿀 때 또 부르면 아까
+  /// 탭했던 알림의 식물이 다시 튀어나온다.
+  ///
+  /// 이미 예약된 알림의 제목·본문은 이것만으로 바뀌지 않는다 — 부른 쪽이
+  /// 이어서 재예약을 돌려야 한다.
+  @override
+  Future<void> setLocale(Locale locale) async {
+    _copy = NotificationCopy.of(locale);
+    if (_onAction == null) return; // init 전이면 할 일이 없다
+    await _initializePlugin();
+    await _createOrUpdateChannel();
+  }
+
+  Future<void> _initializePlugin() async {
     await _plugin.initialize(
       settings: InitializationSettings(
         android: const AndroidInitializationSettings(_androidIcon),
@@ -112,25 +151,27 @@ class LocalNotificationBackend implements NotificationBackend {
         // 한다 — 어느 식물의 알림이었는지 여기서 알려줘서 답변 버튼을 바로
         // 꺼내준다.
         if (actionId == null) {
-          onOpen(payload);
+          _onOpen?.call(payload);
         } else {
-          onAction(actionId, payload);
+          _onAction?.call(actionId, payload);
         }
       },
       // 앱이 죽어 있거나 백그라운드일 때: 큐에 적어둔다.
       onDidReceiveBackgroundNotificationResponse: ipkongBackgroundActionHandler,
     );
+  }
 
-    await _handleLaunchNotification(onOpen);
-
+  /// 같은 ID 로 다시 만들면 Android 가 이름·설명을 갱신한다. 사용자가 채널에
+  /// 해둔 설정(소리·중요도)은 그대로 남는다 — 그래서 ID 를 고정해 둔다.
+  Future<void> _createOrUpdateChannel() async {
     await _plugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(
-          const AndroidNotificationChannel(
+          AndroidNotificationChannel(
             _channelId,
-            _channelName,
-            description: _channelDescription,
+            _copy.channelName,
+            description: _copy.channelDescription,
             // 헤드업으로 화면을 가로채지 않는다. 알림 과부하를 만들지 않는 것이
             // 이 앱의 존재 이유다.
             importance: Importance.defaultImportance,
@@ -201,8 +242,8 @@ class LocalNotificationBackend implements NotificationBackend {
       await _plugin.zonedSchedule(
         id: n.id,
         scheduledDate: tz.TZDateTime.from(at, tz.local),
-        title: NotificationCopy.title(n),
-        body: NotificationCopy.body(n, hint: _hint),
+        title: _copy.title(n),
+        body: _copy.body(n, hint: _hint),
         payload: n.payload,
         androidScheduleMode: _scheduleMode,
         notificationDetails: _detailsFor(n.style),
@@ -226,38 +267,37 @@ class LocalNotificationBackend implements NotificationBackend {
     }
   }
 
-  static final List<DarwinNotificationCategory> _darwinCategories = [
-    DarwinNotificationCategory(
-      _categoryLearning,
-      actions: _darwinActions(NotificationStyle.learning),
-    ),
-    DarwinNotificationCategory(
-      _categorySettled,
-      actions: _darwinActions(NotificationStyle.settled),
-    ),
-    // digest 는 액션이 없다 — 여러 식물을 알림 버튼 하나로 답할 수 없으므로
-    // 앱을 열어 하나씩 답하게 한다. 카테고리도 붙이지 않는다.
-  ];
+  /// `static final` 이면 클래스가 처음 로드될 때의 언어로 굳는다. 언어를
+  /// 바꾼 뒤 재등록하려면 **그때의 문구로 다시 만들어야** 하므로 getter 다.
+  List<DarwinNotificationCategory> get _darwinCategories => [
+        DarwinNotificationCategory(
+          _categoryLearning,
+          actions: _darwinActions(NotificationStyle.learning),
+        ),
+        DarwinNotificationCategory(
+          _categorySettled,
+          actions: _darwinActions(NotificationStyle.settled),
+        ),
+        // digest 는 액션이 없다 — 여러 식물을 알림 버튼 하나로 답할 수 없으므로
+        // 앱을 열어 하나씩 답하게 한다. 카테고리도 붙이지 않는다.
+      ];
 
   /// `.plain` 은 옵션을 주지 않으면 앱을 열지 않고 처리된다.
   /// 흙 상태 한 번 답하자고 앱이 뜰 이유가 없다.
-  static List<DarwinNotificationAction> _darwinActions(
-    NotificationStyle style,
-  ) =>
-      [
-        for (final (id, title) in NotificationCopy.actions(style))
+  List<DarwinNotificationAction> _darwinActions(NotificationStyle style) => [
+        for (final (id, title) in _copy.actions(style))
           DarwinNotificationAction.plain(id, title),
       ];
 
   NotificationDetails _detailsFor(NotificationStyle style) => NotificationDetails(
         android: AndroidNotificationDetails(
           _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
+          _copy.channelName,
+          channelDescription: _copy.channelDescription,
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,
           actions: [
-            for (final (id, title) in NotificationCopy.actions(style))
+            for (final (id, title) in _copy.actions(style))
               AndroidNotificationAction(
                 id,
                 title,

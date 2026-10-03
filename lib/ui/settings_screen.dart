@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/climate.dart';
 import '../domain/models/enums.dart';
@@ -13,6 +14,20 @@ import '../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 import 'care_link_teaser.dart';
 import 'notify_time_sheet.dart';
+
+/// 개인정보처리방침이 게시된 주소.
+///
+/// 게시본은 `ireuisu-legal` 저장소에 있고 Vercel 이 서빙한다. 원본 md 는
+/// 이 저장소 `docs/privacy_policy.md` 다 (README 의 약관 항목 참고).
+///
+/// ⚠️ **배포된 바이너리에 박히는 값이다.** 이 주소를 옮기면 이미 깔려 있는
+/// 앱에서 링크가 죽고, 고치려면 앱 업데이트와 심사를 다시 거쳐야 한다.
+/// 경로를 바꿀 일이 생기면 옮기는 대신 리다이렉트를 두는 편이 낫다.
+///
+/// 방침 본문을 asset 으로 넣지 않고 링크로 두는 이유: 법률 문서라 오타 하나를
+/// 고치는 데에도 심사 대기가 걸리고, 사본이 둘이 되면 반드시 어긋난다.
+/// 페이지만 고치면 모든 사용자가 즉시 최신본을 본다.
+const privacyPolicyUrl = 'https://ireuisu-legal.vercel.app/ipkong/privacy';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -76,6 +91,15 @@ class SettingsScreen extends ConsumerWidget {
                 ref.read(localeProvider.notifier).state = v == null
                     ? null
                     : Locale(v);
+
+                // 화면은 Riverpod 이 곧바로 다시 그리지만 알림은 아니다.
+                // 예약된 알림에는 **예약하던 때의 언어로 문구가 박혀 있고**,
+                // iOS 액션 버튼은 카테고리에 박혀 있어 재등록해야 한다.
+                // 그래서 둘 다 한다 — 문구 재등록, 그리고 재예약.
+                await ref
+                    .read(notificationBackendProvider)
+                    .setLocale(AppStrings.resolve(v));
+                await ref.read(plantListProvider.notifier).load();
               },
               items: [
                 DropdownMenuItem(value: null, child: Text(s.languageSystem)),
@@ -88,6 +112,24 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(height: 32),
           _SectionLabel(s.comingSoon),
           const CareLinkTeaser(),
+
+          const Divider(height: 32),
+          _SectionLabel(s.settingsAbout),
+
+          _SettingsRow(
+            icon: Icons.privacy_tip_outlined,
+            title: s.privacyPolicy,
+            description: s.privacyPolicyDesc,
+            // 앱을 벗어난다는 표시. 이게 없으면 탭했을 때 브라우저가 뜨는 게
+            // 사고처럼 느껴진다.
+            trailing: Icon(
+              Icons.open_in_new,
+              size: 18,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            alignment: CrossAxisAlignment.center,
+            onTap: () => _openPrivacyPolicy(context),
+          ),
 
           const SizedBox(height: 28),
           Center(
@@ -157,6 +199,33 @@ class SettingsScreen extends ConsumerWidget {
       case _ExportChoice.share:
         await _shareAsFile(context, messenger, s, json);
     }
+  }
+
+  /// 방침을 **시스템 브라우저에 넘긴다.**
+  ///
+  /// [LaunchMode.externalApplication] 이어야 한다. WebView 나 인앱 브라우저로
+  /// 그리면 릴리스 매니페스트에 `INTERNET` 권한이 붙고, 그 순간 이 앱은
+  /// "네트워크로 데이터를 주고받는 기능이 없다"고 적힌 방침을 스스로 부정하는
+  /// 앱이 된다. 주소만 넘기면 네트워크는 브라우저가 한다.
+  Future<void> _openPrivacyPolicy(BuildContext context) async {
+    final s = AppStrings.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    var opened = false;
+    try {
+      opened = await launchUrl(
+        Uri.parse(privacyPolicyUrl),
+        mode: LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      debugPrint('[ipkong] 방침 링크 열기 실패: $e');
+    }
+    if (opened) return;
+
+    // 브라우저가 없는 기기는 드물지만, 그때도 방침에 닿을 길은 남긴다.
+    // 링크가 조용히 아무 일도 안 하는 것이 제일 나쁘다.
+    await Clipboard.setData(const ClipboardData(text: privacyPolicyUrl));
+    messenger.showSnackBar(SnackBar(content: Text(s.privacyPolicyFailed)));
   }
 
   /// 파일로 써서 공유 시트에 넘긴다.

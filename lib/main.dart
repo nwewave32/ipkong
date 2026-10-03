@@ -4,11 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
 import 'core/climate.dart';
+import 'data/settings_repository.dart';
 import 'core/local_timezone.dart';
 import 'data/photo_store.dart';
 import 'notifications/local_notification_backend.dart';
 import 'notifications/notification_backend.dart';
 import 'notifications/pending_actions.dart';
+import 'l10n/app_localizations.dart';
 import 'providers/providers.dart';
 
 Future<void> main() async {
@@ -22,10 +24,15 @@ Future<void> main() async {
   final climate = ClimateResolver.resolve(tzName);
   debugPrint('[ipkong] timezone=$tzName climate=$climate');
 
+  // 알림 문구의 언어. 화면이 하나도 없는 시점이라 Localizations 를 쓸 수 없어
+  // 직접 고른다 — MaterialApp 과 같은 규칙을 따르지 않으면 화면은 영어인데
+  // 알림만 한국어로 가는 일이 생긴다.
+  final locale = AppStrings.resolve(SettingsRepository(prefs).localeCode);
+
   // 타임존 이름을 알림 백엔드에도 넘긴다. 예약 시각을 기기 타임존으로
   // 해석해야 하는데, 플랫폼 호출을 두 번 할 이유가 없다.
   final NotificationBackend backend =
-      LocalNotificationBackend(timeZoneName: tzName);
+      LocalNotificationBackend(locale: locale, timeZoneName: tzName);
 
   // 사진은 앱 문서 폴더에 둔다. 폴더를 여는 건 비동기라 프로바이더 기본값으로
   // 만들 수 없어서, 여기서 한 번 열고 주입한다.

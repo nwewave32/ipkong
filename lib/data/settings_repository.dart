@@ -20,8 +20,13 @@ class SettingsRepository {
   static const _kInterestCareLink = 'interest_care_link';
   static const _kOnboardingDone = 'onboarding_done';
 
-  /// 첫 실행 때 발급해 Keychain/Keystore 에 준하는 저장소에 둔다.
-  /// v1.1 에서 계정 없이 돌봄 링크의 소유자를 식별하는 열쇠가 된다.
+  /// 처음 필요할 때 발급해 SharedPreferences 에 둔다. 앱 샌드박스 안이지만
+  /// **Keychain/Keystore 가 아니다** — 안드로이드는 평문 XML 이고, OS 백업
+  /// (iCloud / Google 백업)에 실려 재설치 뒤에도 같은 값이 돌아올 수 있다.
+  ///
+  /// v1.1 에서 계정 없이 돌봄 링크의 소유자를 식별하는 열쇠가 되는데, 그때
+  /// 이 값을 **비밀로 전제하면 안 된다.** 비밀이 필요해지는 순간
+  /// Keychain/Keystore 로 옮기고 마이그레이션을 따로 둔다.
   String get deviceId {
     var id = _prefs.getString(_kDeviceId);
     if (id == null) {

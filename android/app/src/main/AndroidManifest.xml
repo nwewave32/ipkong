@@ -72,5 +72,14 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- 개인정보처리방침 링크를 브라우저에 넘긴다. Android 11+ 는 이
+             선언이 없으면 다른 앱이 보이지 않아 `canLaunchUrl` 이 false 를
+             돌려주고 링크가 조용히 먹통이 된다.
+             이건 브라우저를 '찾을 수 있게' 할 뿐이고, 네트워크는 브라우저가
+             한다 — 그래서 INTERNET 권한은 여전히 필요 없다. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>
     </queries>
 </manifest>
