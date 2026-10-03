@@ -16,7 +16,10 @@ class IpkongApp extends ConsumerWidget {
     final onboarded = ref.watch(onboardingDoneProvider);
 
     return MaterialApp(
-      title: '잎콩',
+      // 안드로이드 작업 전환기에 뜨는 제목. 하드코딩하면 영어로 쓰는
+      // 사람에게도 한글이 뜬다. onGenerateTitle 은 Localizations 가 선
+      // 뒤에 불리므로 AppStrings 를 쓸 수 있다 (title: 은 그렇지 않다).
+      onGenerateTitle: (context) => AppStrings.of(context).appName,
       debugShowCheckedModeBanner: false,
       locale: locale,
       supportedLocales: AppStrings.supportedLocales,

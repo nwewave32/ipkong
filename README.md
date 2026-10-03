@@ -156,6 +156,25 @@ sqflite + 얇은 리포지토리로 시작했습니다. `PlantRepository` 인터
 
 ## 플랫폼 설정
 
+**앱 이름** — 홈 화면 이름은 **기기 시스템 언어**를 따릅니다. 앱 안의 언어
+설정과는 무관합니다 — 런처는 앱 내부 설정을 알 수 없으므로, 폰은 영어이고
+앱은 한국어로 쓰는 사람은 홈 화면에서 `Ipkong` 을, 열면 `잎콩` 을 봅니다.
+
+| | 한국어 | 폴백 |
+|---|---|---|
+| Android | `res/values-ko/strings.xml` | `res/values/strings.xml` → `Ipkong` |
+| iOS | `Runner/ko.lproj/InfoPlist.strings` | `Runner/en.lproj` + `Info.plist` → `Ipkong` |
+| 앱 UI | — | `AppStrings.supportedLocales` **첫 항목** → `en` |
+
+폴백을 셋 다 영어로 맞춰 뒀습니다. 일본어·프랑스어처럼 지원하지 않는 언어의
+기기에 한글을 들이미는 것보다 낫고, 세 곳이 어긋나면 "아이콘은 Ipkong 인데
+열면 한국어" 가 됩니다. `supportedLocales` 의 **순서가 폴백을 정한다**는 점에
+주의하세요.
+
+번들 ID `com.ipkong.ipkong` 은 사용자에게 보이지 않고, 스토어에 올린 뒤에는
+바꿀 수 없습니다. 스토어 등록명은 또 별개로 App Store Connect · Play Console
+에서 언어별로 넣습니다.
+
 **iOS** — `ios/Runner/Info.plist` (사진·카메라 문구만 필요합니다)
 
 `UIBackgroundModes` 는 넣지 않았습니다. 그건 푸시(remote-notification)용이고
@@ -168,12 +187,10 @@ sqflite + 얇은 리포지토리로 시작했습니다. `PlantRepository` 인터
 후자는 `didFinishLaunchingWithOptions` 가 아니라
 `didInitializeImplicitFlutterEngine` 에 둡니다.
 
-```xml
-<key>NSPhotoLibraryUsageDescription</key>
-<string>식물 사진을 등록하기 위해 사진 접근이 필요합니다.</string>
-<key>NSCameraUsageDescription</key>
-<string>식물 사진을 찍기 위해 카메라 접근이 필요합니다.</string>
-```
+`Info.plist` 의 값은 **폴백**입니다. 실제로 뜨는 문구는 기기 언어에 따라
+`Runner/{en,ko}.lproj/InfoPlist.strings` 가 덮어씁니다. `.lproj` 를 새로
+추가할 때는 `project.pbxproj` 의 `knownRegions` 에도 넣어야 합니다 — 빠지면
+그 폴더가 **통째로 무시되고** 빌드는 조용히 성공합니다.
 
 **Android** — `android/app/src/main/AndroidManifest.xml` 의 `<manifest>` 안
 

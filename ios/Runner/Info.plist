@@ -4,11 +4,14 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
-	<!-- 이 두 키가 없으면 카메라·앨범을 여는 순간 앱이 그대로 죽는다. -->
+	<!-- 이 두 키가 없으면 카메라·앨범을 여는 순간 앱이 그대로 죽는다.
+	     여기 값은 **폴백**이다 — 실제로 뜨는 문구는 기기 언어에 따라
+	     Runner/{en,ko}.lproj/InfoPlist.strings 가 덮어쓴다. 폴백은
+	     AppStrings.supportedLocales 와 맞춰 영어로 둔다. -->
 	<key>NSCameraUsageDescription</key>
-	<string>식물 사진을 찍어 등록할 때만 카메라를 씁니다. 사진은 기기 안에만 저장되고 어디에도 전송되지 않습니다.</string>
+	<string>Used only when you take a plant photo yourself. Photos stay on your device and are never sent anywhere.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>식물 사진을 고를 때만 앨범을 엽니다. 고른 사진은 기기 안에만 저장되고 어디에도 전송되지 않습니다.</string>
+	<string>Opens your library only when you choose a plant photo yourself. The photo stays on your device and is never sent anywhere.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
@@ -20,7 +23,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>ipkong</string>
+	<string>Ipkong</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

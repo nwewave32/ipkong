@@ -12,7 +12,14 @@ class AppStrings {
 
   final Locale locale;
 
-  static const supportedLocales = [Locale('ko'), Locale('en')];
+  /// **순서가 폴백을 정한다.** MaterialApp 의 기본 해석
+  /// (`basicLocaleListResolution`)은 기기 언어 중 맞는 것이 하나도 없으면
+  /// 이 목록의 **첫 번째**로 떨어진다. 일본어·프랑스어 기기에 한국어 화면을
+  /// 들이미는 것보다 영어가 낫다.
+  ///
+  /// 런처 아이콘 이름의 폴백도 여기에 맞춰 뒀다 —
+  /// `res/values/strings.xml`(Ipkong)과 `ios/Runner/en.lproj`.
+  static const supportedLocales = [Locale('en'), Locale('ko')];
 
   static AppStrings of(BuildContext context) =>
       Localizations.of<AppStrings>(context, AppStrings) ??

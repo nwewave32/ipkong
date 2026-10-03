@@ -1,0 +1,7 @@
+/* 홈 화면 이름과 권한 안내. Info.plist 의 같은 키를 언어별로 덮어쓴다. */
+
+"CFBundleDisplayName" = "잎콩";
+"CFBundleName" = "잎콩";
+
+"NSCameraUsageDescription" = "식물 사진을 찍어 등록할 때만 카메라를 씁니다. 사진은 기기 안에만 저장되고 어디에도 전송되지 않습니다.";
+"NSPhotoLibraryUsageDescription" = "식물 사진을 고를 때만 앨범을 엽니다. 고른 사진은 기기 안에만 저장되고 어디에도 전송되지 않습니다.";

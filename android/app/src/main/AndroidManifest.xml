@@ -12,7 +12,7 @@
          (LocalNotificationBackend 참고). -->
 
     <application
-        android:label="ipkong"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

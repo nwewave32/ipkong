@@ -1,0 +1,10 @@
+/* 홈 화면 이름과 권한 안내. Info.plist 의 같은 키를 언어별로 덮어쓴다.
+
+   en 이 폴백이다 — ko.lproj 가 없는 언어(일본어·프랑스어 등)는 이 파일을
+   쓴다. AppStrings.supportedLocales 의 폴백과 맞춰 뒀다. */
+
+"CFBundleDisplayName" = "Ipkong";
+"CFBundleName" = "Ipkong";
+
+"NSCameraUsageDescription" = "Used only when you take a plant photo yourself. Photos stay on your device and are never sent anywhere.";
+"NSPhotoLibraryUsageDescription" = "Opens your library only when you choose a plant photo yourself. The photo stays on your device and is never sent anywhere.";
