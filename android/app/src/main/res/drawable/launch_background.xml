@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@android:color/white" />
+<!--
+  Android 11 이하의 스플래시. 창 배경으로 그려지므로 레이어 하나하나가
+  그대로 화면을 채운다.
 
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+  Android 12+ 는 이 파일을 **쓰지 않는다.** 시스템 스플래시 API 가 대신
+  들어오며 values-v31/styles.xml 이 그쪽을 설정한다. 둘 다 손봐야 두
+  버전에서 같은 화면이 나온다.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/ic_launcher_background" />
+    <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+            android:src="@drawable/splash_glyph" />
+    </item>
 </layer-list>
