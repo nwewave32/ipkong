@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  앱 타깃의 개인정보 매니페스트.
+
+  App Store Connect 에서 채우는 App Privacy **라벨과는 다른 것**이다. 라벨은
+  제출 양식이고, 이 파일은 앱 안에 들어간다. 번들마다 따로 두며 플러그인 7종과
+  Flutter.framework 은 각자 자기 것을 갖고 있다 — 여기 적는 것은 **이 앱
+  자신의** 코드에 대한 선언이다.
+
+  앱 타깃의 네이티브 코드는 AppDelegate · SceneDelegate 36줄이 전부이고
+  required-reason API 를 하나도 부르지 않아 NSPrivacyAccessedAPITypes 가
+  비어 있다. UserDefaults 를 쓰는 것은 shared_preferences_foundation 이고
+  그쪽 매니페스트가 이미 선언한다.
+
+  엄밀히 말해 이 파일이 없어도 심사는 통과한다. 그래도 두는 이유는 "아무것도
+  수집하지 않는다" 가 이 앱의 핵심 주장이기 때문이다 — 말로만 하지 않고
+  바이너리 안에 적어 둔다.
+-->
+<plist version="1.0">
+<dict>
+    <!-- 추적하지 않는다. ATT 동의 요청도, 추적용 도메인도 없다. -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <!-- 수집하는 데이터가 없다. 서버도 네트워크 코드도 없다. -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array/>
+
+    <!-- 이 앱 자신의 코드가 부르는 required-reason API 가 없다. -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array/>
+</dict>
+</plist>
