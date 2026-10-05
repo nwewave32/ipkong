@@ -4,6 +4,20 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- 수출 규정 준수. 이 키가 없으면 업로드할 때마다 App Store Connect 가
+	     "암호화를 사용합니까" 를 묻고, 답하기 전에는 빌드를 버전에 연결할 수
+	     없다 ("수출 규정 관련 문서 누락").
+
+	     false 인 이유: 이 앱에는 네트워크 코드가 아예 없다. HTTPS 조차 쓰지
+	     않으므로 "면제 대상 암호화" 를 따질 것도 없다. 릴리스 매니페스트에
+	     INTERNET 권한이 없는 것이 그 근거다
+	     (test/privacy_policy_test.dart 가 지킨다).
+
+	     ⚠️ 나중에 돌봄 링크처럼 서버와 통신하는 기능이 들어가면 이 값을
+	     다시 판단해야 한다. HTTPS 만 쓰면 여전히 면제지만, 그때는 면제
+	     사유로서의 판단이지 "암호화를 안 쓴다" 가 아니다. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- 이 두 키가 없으면 카메라·앨범을 여는 순간 앱이 그대로 죽는다.
 	     여기 값은 **폴백**이다 — 실제로 뜨는 문구는 기기 언어에 따라
 	     Runner/{en,ko}.lproj/InfoPlist.strings 가 덮어쓴다. 폴백은
