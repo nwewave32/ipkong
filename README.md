@@ -171,7 +171,7 @@ sqflite + 얇은 리포지토리로 시작했습니다. `PlantRepository` 인터
 열면 한국어" 가 됩니다. `supportedLocales` 의 **순서가 폴백을 정한다**는 점에
 주의하세요.
 
-번들 ID `com.ipkong.ipkong` 은 사용자에게 보이지 않고, 스토어에 올린 뒤에는
+번들 ID `com.ireuisu.ipkong` 은 사용자에게 보이지 않고, 스토어에 올린 뒤에는
 바꿀 수 없습니다. 스토어 등록명은 또 별개로 App Store Connect · Play Console
 에서 언어별로 넣습니다.
 
