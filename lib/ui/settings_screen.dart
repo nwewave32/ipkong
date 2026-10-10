@@ -109,9 +109,11 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
 
-          const Divider(height: 32),
-          _SectionLabel(s.comingSoon),
-          const CareLinkTeaser(),
+          if (showCareLinkTeaser) ...[
+            const Divider(height: 32),
+            _SectionLabel(s.comingSoon),
+            const CareLinkTeaser(),
+          ],
 
           const Divider(height: 32),
           _SectionLabel(s.settingsAbout),

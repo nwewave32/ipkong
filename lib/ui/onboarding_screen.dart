@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers/providers.dart';
+import 'care_link_teaser.dart';
 
 /// 온보딩 3화면 (명세 §3 — 스킵 가능).
 ///
@@ -99,7 +100,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     body: s.onboard3Body,
                     // §10.1 — 설정 외에 온보딩 마지막 화면에도 한 줄.
                     // 강요하지 않는다. 버튼도 팝업도 없이 문장 하나다.
-                    footnote: '✈️ ${s.careLinkTitle} — ${s.careLinkNextUpdate}',
+                    footnote: showCareLinkTeaser
+                        ? '✈️ ${s.careLinkTitle} — ${s.careLinkNextUpdate}'
+                        : null,
                   ),
                 ],
               ),

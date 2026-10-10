@@ -4,6 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../l10n/app_localizations.dart';
 import '../providers/providers.dart';
 
+/// 돌봄 링크 티저를 보일지 — 설정 카드와 온보딩 마지막 화면 한 줄을 함께 끈다.
+///
+/// v1.0 에서는 끈다. 앱 안의 "곧 나올 기능 · 알려주세요" 는 미완성 기능
+/// 노출로 보여 App Review 2.1(완성도) 지적을 받을 수 있다. 다시 예고하려면
+/// true 로 바꾸면 된다. 관심 표시 플래그는 그대로 남아 있다.
+const showCareLinkTeaser = false;
+
 /// v1.1 돌봄 위탁 링크 예고 티저.
 ///
 /// 기능은 아직 없지만 곧 나온다는 사실은 알린다. 강요하지 않는다 —

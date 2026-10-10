@@ -9,6 +9,7 @@ import 'package:ipkong/l10n/app_localizations.dart';
 import 'package:ipkong/notifications/notification_backend.dart';
 import 'package:ipkong/notifications/notification_plan.dart';
 import 'package:ipkong/providers/providers.dart';
+import 'package:ipkong/ui/care_link_teaser.dart';
 import 'package:ipkong/ui/edit_plant_screen.dart';
 import 'package:ipkong/ui/notify_time_sheet.dart';
 import 'package:ipkong/ui/onboarding_screen.dart';
@@ -116,8 +117,11 @@ void main() {
       expect(find.text(s.onboard3Title), findsOneWidget);
       expect(find.text(s.onboardStart), findsOneWidget);
 
-      // §10.1 — 마지막 화면에 돌봄 링크 티저 한 줄.
-      expect(find.textContaining(s.careLinkTitle), findsOneWidget);
+      // §10.1 — 마지막 화면에 돌봄 링크 티저 한 줄. v1.0 은 꺼 둔다.
+      expect(
+        find.textContaining(s.careLinkTitle),
+        showCareLinkTeaser ? findsOneWidget : findsNothing,
+      );
     });
 
     testWidgets('건너뛰기는 온보딩을 끝내되 식물 추가로 이어지지 않는다', (tester) async {
